@@ -1,0 +1,22 @@
+name: my_logger
+description: A flexible, extensible logging utility with dynamic modules/layers, persistence, and a simple console UI.
+version: 0.1.0
+publish_to: "none"
+
+environment:
+  sdk: ">=2.17.0 <4.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  logger: ^2.0.2+1
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_lints: ^3.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
