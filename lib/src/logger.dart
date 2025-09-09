@@ -33,7 +33,7 @@ class MyLogger {
   static final MyLogger _instance = MyLogger._internal();
   static MyLogger get I => _instance;
 
-  late final ext.Logger _printer = ext.Logger(
+  static final ext.Logger _printer = ext.Logger(
     level: ext.Level.debug,
     printer: ext.PrettyPrinter(
       methodCount: 0,
@@ -45,82 +45,93 @@ class MyLogger {
     ),
   );
 
-  final StreamController<LogEntry> _controller = StreamController.broadcast();
-  LoggerConfig? _config;
-  LoggerStore? _store;
+  static final StreamController<LogEntry> _controller =
+      StreamController.broadcast();
+  static LoggerConfig? _config;
+  static LoggerStore? _store;
 
-  Stream<LogEntry> get stream => _controller.stream;
-  LoggerConfig? get config => _config;
+  static Stream<LogEntry> get stream => _controller.stream;
+  static LoggerConfig? get config => _config;
 
-  Future<void> init({LoggerStore? store, LoggerConfig? config}) async {
+  static Future<void> init({
+    LoggerStore? store,
+    LoggerConfig? config,
+    List<Enum>? defaultModules,
+    List<Enum>? defaultLayers,
+  }) async {
     _store = store ?? SharedPrefsLoggerStore();
     await _store!.init();
 
     // default layers
     final reg = LoggerRegistry.instance;
     if (reg.layers.isEmpty) {
-      for (final l in const [
-        'ui',
-        'viewModel',
-        'repo',
-        'dataSource',
-        'service',
-        'temp',
-        'util',
-      ]) {
-        reg.registerLayer(l);
+      if (defaultLayers != null && defaultLayers.isNotEmpty) {
+        for (final e in defaultLayers) {
+          reg.registerLayerEnum(e);
+        }
+      } else {
+        for (final e in LoggerDefaultLayer.values) {
+          reg.registerLayerEnum(e);
+        }
       }
     }
     if (reg.modules.isEmpty) {
-      reg.registerModule('test');
+      if (defaultModules != null && defaultModules.isNotEmpty) {
+        for (final e in defaultModules) {
+          reg.registerModuleEnum(e);
+        }
+      } else {
+        for (final e in LoggerDefaultModule.values) {
+          reg.registerModuleEnum(e);
+        }
+      }
     }
 
     // default config: all enabled
-    _config =
-        config ??
+    _config = config ??
         await _store!.loadConfig() ??
         LoggerConfig(defaultEnabled: true);
     await _store!.saveConfig(_config!);
   }
 
-  void updateConfig(LoggerConfig config) {
+  static void updateConfig(LoggerConfig config) {
     _config = config;
     _store?.saveConfig(config);
   }
 
-  void registerLayer(String id, {String? displayName}) {
+  static void registerLayer(String id, {String? displayName}) {
     LoggerRegistry.instance.registerLayer(id, displayName: displayName);
-    // expand matrix lazily on next new config creation; keep current config as-is
   }
 
-  void registerModule(String id, {String? displayName}) {
+  static void registerModule(String id, {String? displayName}) {
     LoggerRegistry.instance.registerModule(id, displayName: displayName);
   }
 
-  void d(String file, dynamic message, String moduleId, String layerId) {
-    _log(LogLevel.debug, file, message, moduleId, layerId);
+  static void d(String file, dynamic message, Enum module, Enum layer) {
+    _log(LogLevel.debug, file, message, module.name, layer.name);
   }
 
-  void i(String file, dynamic message, String moduleId, String layerId) {
-    _log(LogLevel.info, file, message, moduleId, layerId);
+  static void i(String file, dynamic message, Enum module, Enum layer) {
+    _log(LogLevel.info, file, message, module.name, layer.name);
   }
 
-  void w(String file, dynamic message, String moduleId, String layerId) {
-    _log(LogLevel.warning, file, message, moduleId, layerId);
+  static void w(String file, dynamic message, Enum module, Enum layer) {
+    _log(LogLevel.warning, file, message, module.name, layer.name);
   }
 
-  void e(
+  static void e(
     String file,
     dynamic message,
-    String moduleId,
-    String layerId, [
+    Enum module,
+    Enum layer, [
     dynamic error,
     StackTrace? stackTrace,
   ]) {
-    _log(LogLevel.error, file, message, moduleId, layerId, error, stackTrace);
+    _log(LogLevel.error, file, message, module.name, layer.name, error,
+        stackTrace);
   }
 
-  void _log(
+  static void _log(
     LogLevel level,
     String file,
     dynamic message,

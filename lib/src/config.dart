@@ -31,6 +31,41 @@ class LoggerConfig {
     }
   }
 
+  /// Enable/disable single [level] for all layers under a module
+  void setModuleLevel(String moduleId, LogLevel level, bool enabled) {
+    for (final l in LoggerRegistry.instance.layers) {
+      _matrix[moduleId]?[l.id]?[level] = enabled;
+    }
+  }
+
+  /// Enable/disable all levels under a specific layer for a module
+  void setModuleLayerAll(String moduleId, String layerId, bool enabled) {
+    for (final level in LogLevel.values) {
+      _matrix[moduleId]?[layerId]?[level] = enabled;
+    }
+  }
+
+  /// Returns true when ANY level under the specific layer is enabled
+  bool isModuleLayerEnabled(String moduleId, String layerId) {
+    final levels = _matrix[moduleId]?[layerId];
+    if (levels == null) return false;
+    for (final enabled in levels.values) {
+      if (enabled == true) return true;
+    }
+    return false;
+  }
+
+  /// Returns true when ALL layers for the given level are enabled for this module
+  bool isModuleLevelEnabled(String moduleId, LogLevel level) {
+    final layerMap = _matrix[moduleId];
+    if (layerMap == null) return false;
+    for (final l in LoggerRegistry.instance.layers) {
+      final enabled = layerMap[l.id]?[level] ?? false;
+      if (!enabled) return false;
+    }
+    return true;
+  }
+
   bool shouldShow(String moduleId, String layerId, LogLevel level) {
     return _matrix[moduleId]?[layerId]?[level] ?? false;
   }
@@ -62,10 +97,10 @@ class LoggerConfig {
       (layers as Map).forEach((l, levels) {
         (levels as Map).forEach((lvl, enabled) {
           cfg.set(
-            m as String,
-            l as String,
+            m,
+            l,
             LogLevel.values.firstWhere((e) => e.name == lvl),
-            enabled as bool,
+            enabled,
           );
         });
       });

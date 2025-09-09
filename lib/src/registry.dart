@@ -30,6 +30,20 @@ class LoggerRegistry {
     _modules[id] = ModuleDefinition(id, displayName ?? id);
   }
 
+  // Enum helpers
+  void registerLayerEnum(Enum e, {String? displayName}) {
+    registerLayer(e.name, displayName: displayName ?? e.name);
+  }
+
+  void registerModuleEnum(Enum e, {String? displayName}) {
+    registerModule(e.name, displayName: displayName ?? e.name);
+  }
+
   bool hasLayer(String id) => _layers.containsKey(id);
   bool hasModule(String id) => _modules.containsKey(id);
 }
+
+// default enums
+enum LoggerDefaultLayer { ui, provider, repo, dataSource, service, util }
+
+enum LoggerDefaultModule { test }

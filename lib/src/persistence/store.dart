@@ -64,15 +64,15 @@ class SharedPrefsLoggerStore implements LoggerStore {
   }
 
   String _encodeEntry(LogEntry e) => jsonEncode({
-    'ts': e.timestamp.millisecondsSinceEpoch,
-    'lvl': e.level.name,
-    'mod': e.moduleId,
-    'lay': e.layerId,
-    'file': e.fileName,
-    'msg': e.message?.toString(),
-    'err': e.error?.toString(),
-    'st': e.stackTrace?.toString(),
-  });
+        'ts': e.timestamp.millisecondsSinceEpoch,
+        'lvl': e.level.name,
+        'mod': e.moduleId,
+        'lay': e.layerId,
+        'file': e.fileName,
+        'msg': e.message?.toString(),
+        'err': e.error?.toString(),
+        'st': e.stackTrace?.toString(),
+      });
 
   LogEntry _decodeEntry(String s) {
     final m = jsonDecode(s) as Map<String, dynamic>;
@@ -84,9 +84,8 @@ class SharedPrefsLoggerStore implements LoggerStore {
       fileName: m['file'] as String,
       message: m['msg'],
       error: m['err'],
-      stackTrace: m['st'] != null
-          ? StackTrace.fromString(m['st'] as String)
-          : null,
+      stackTrace:
+          m['st'] != null ? StackTrace.fromString(m['st'] as String) : null,
     );
   }
 }
