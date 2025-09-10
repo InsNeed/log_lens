@@ -94,11 +94,9 @@ Navigator.of(context).push(
 
 `SharedPrefsLoggerStore` is used by default. You can implement your own `LoggerStore` and pass it to `init`.
 
-## Screenshots (optional)
+## Screenshot
 
 ![LogLens Demo](screenshot/log_lens.gif)
-
-![LogLens Console](screenshot/1.png)
 
 ## License
 
