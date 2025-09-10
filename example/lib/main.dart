@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:loglens/log_lens.dart';
+import 'package:loglens/loglens.dart';
 
 enum LogModules {
   auth,

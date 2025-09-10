@@ -1,4 +1,4 @@
-library my_logger;
+library loglens;
 
 import 'package:flutter/material.dart';
 import 'package:loglens/src/logger.dart';

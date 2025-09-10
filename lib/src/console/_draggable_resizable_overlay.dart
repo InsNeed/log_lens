@@ -1,4 +1,4 @@
-part of my_logger;
+part of loglens;
 
 class _DraggableResizableOverlay extends StatefulWidget {
   final Widget child;

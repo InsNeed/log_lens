@@ -1,4 +1,4 @@
-part of my_logger;
+part of loglens;
 
 class FloatingLogConsoleController {
   OverlayEntry? _entry;
