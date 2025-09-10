@@ -45,7 +45,7 @@ enum LogLayers {
   domain,
   repository,
   dataSource,
-  network, // or api
+  network,
   service,
   cache,
 }
@@ -96,7 +96,9 @@ Navigator.of(context).push(
 
 ## Screenshots (optional)
 
-Add screenshots/GIFs here to showcase the console and overlay.
+![LogLens Demo](screenshot/log_lens.gif)
+
+![LogLens Console](screenshot/1.png)
 
 ## License
 
