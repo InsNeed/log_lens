@@ -64,29 +64,10 @@ class _FloatingLogConsoleButtonState extends State<FloatingLogConsoleButton> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.autoAttach) return _buildButton(context);
     return Stack(
       children: [
         Positioned.fill(child: const SizedBox.shrink()),
-        Align(
-          alignment: widget.alignment,
-          child: Padding(
-            padding: widget.padding,
-            child: _buildButton(context),
-          ),
-        ),
       ],
-    );
-  }
-
-  Widget _buildButton(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () {
-        // MyLogger.I.i('FloatingLogConsoleButton',
-        //     'FloatingLogConsoleButton pressed', 'my_logger', 'ui');
-      },
-      icon: const Icon(Icons.bug_report),
-      label: Text(_controller.isShowing ? 'Close Logs' : 'Open Logs'),
     );
   }
 }

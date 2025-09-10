@@ -24,8 +24,8 @@ class _DraggableResizableOverlayState
   static const Size _minSize = Size(240, 160);
   static const double _handleSize = 16;
   static const double _edgeThickness = 8;
-  static const double _miniHeight = 48;
-  static const double _miniWidth = 150;
+  static const double _miniHeight = 50;
+  static const double _miniWidth =50;
 
   @override
   void initState() {
@@ -172,7 +172,7 @@ class _DraggableResizableOverlayState
                 GestureDetector(
                   onPanUpdate: (d) => _onDrag(d, screen),
                   child: Container(
-                    height: 40,
+                    height: _isMinimized ? _miniHeight : 40,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: Theme.of(context)
@@ -185,35 +185,50 @@ class _DraggableResizableOverlayState
                                   .dividerColor
                                   .withOpacity(0.3))),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.drag_indicator, size: 18),
-                        const SizedBox(width: 6),
-                        const Text('Logs'),
-                        const Spacer(),
-                        IconButton(
-                          tooltip: _isMinimized ? 'Restore' : 'Minimize',
-                          icon: Icon(_isMinimized
-                              ? Icons.crop_square
-                              : Icons.minimize),
-                          padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 32, minHeight: 32),
-                          iconSize: 20,
-                          onPressed: () =>
-                              setState(() => _isMinimized = !_isMinimized),
-                        ),
-                        IconButton(
-                          tooltip: 'Close',
-                          icon: const Icon(Icons.close),
-                          padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 32, minHeight: 32),
-                          iconSize: 20,
-                          onPressed: widget.onClose,
-                        ),
-                      ],
-                    ),
+                    child: _isMinimized
+                        ? Row(
+                            children: [
+                              const Spacer(),
+                              IconButton(
+                                tooltip: 'Restore',
+                                icon: const Icon(Icons.crop_square),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 28, minHeight: 28),
+                                iconSize: 18,
+                                onPressed: () =>
+                                    setState(() => _isMinimized = false),
+                              ),
+                              const Spacer(),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              const Icon(Icons.drag_indicator, size: 18),
+                              const SizedBox(width: 6),
+                              const Text('Logs'),
+                              const Spacer(),
+                              IconButton(
+                                tooltip: 'Minimize',
+                                icon: const Icon(Icons.minimize),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 32, minHeight: 32),
+                                iconSize: 20,
+                                onPressed: () =>
+                                    setState(() => _isMinimized = true),
+                              ),
+                              IconButton(
+                                tooltip: 'Close',
+                                icon: const Icon(Icons.close),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 32, minHeight: 32),
+                                iconSize: 20,
+                                onPressed: widget.onClose,
+                              ),
+                            ],
+                          ),
                   ),
                 ),
                 // Content

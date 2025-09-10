@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   /// Initialize logger and register modules/layers
-  await MyLogger.init(
+  await LogLens.init(
     defaultModules: LogModules.values,
     defaultLayers: LogLayers.values,
   );
@@ -36,14 +36,14 @@ class ConsoleDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = FloatingLogConsoleController();
     return Scaffold(
-      appBar: AppBar(title: const Text('MyLogger Example')),
+      appBar: AppBar(title: const Text('LogLens Example')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text('''Guide:
-1. Initialize and Register: MyLogger.init()
-2. Log: MyLogger.i(file, msg, moduleName, layerName)
-3  Config LoggerConfig().setModuleLevel(module, level, enabled)
+  1.Initialize and Register: LogLens.init()
+  2.Log: LogLens.i(file, msg, moduleName, layerName)
+  3.Config LoggerConfig().setModuleLevel(module, level, enabled)
 '''),
           const SizedBox(height: 8),
           FilledButton(
@@ -54,14 +54,15 @@ class ConsoleDemo extends StatelessWidget {
           FilledButton.tonal(
             onPressed: () {
               //login
-              MyLogger.i('example.dart', 'User pressed login button',
+              LogLens.i('example.dart', 'User pressed login button',
                   LogModules.auth, LogLayers.ui);
 
               //failed
-              MyLogger.e('UserLogin.dart', 'UserLogin Failed', LogModules.auth,
+              LogLens.e('UserLogin.dart', 'UserLogin Failed', LogModules.auth,
                   LogLayers.dataSource);
+
               //user pay
-              MyLogger.i('Payment.dart', 'User pressed pay button, paid \$100',
+              LogLens.i('Payment.dart', 'User pressed pay button, paid \$100',
                   LogModules.pay, LogLayers.ui);
             },
             child: const Text('Write Sample Logs'),

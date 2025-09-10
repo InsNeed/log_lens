@@ -28,10 +28,10 @@ class LogEntry {
   });
 }
 
-class MyLogger {
-  MyLogger._internal();
-  static final MyLogger _instance = MyLogger._internal();
-  static MyLogger get I => _instance;
+class LogLens {
+  LogLens._internal();
+  static final LogLens _instance = LogLens._internal();
+  static LogLens get I => _instance;
 
   static final ext.Logger _printer = ext.Logger(
     level: ext.Level.debug,

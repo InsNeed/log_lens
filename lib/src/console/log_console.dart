@@ -34,14 +34,14 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
   bool _showModules = true;
   StreamSubscription<LogEntry>? _subscription;
 
-  LoggerConfig? get _config => MyLogger.config;
+  LoggerConfig? get _config => LogLens.config;
 
   void _toggleModuleAll(String moduleId, bool enabled) {
     final cfg = _config;
     if (cfg == null) return;
     setState(() {
       cfg.setModuleAll(moduleId, enabled);
-      MyLogger.updateConfig(cfg);
+      LogLens.updateConfig(cfg);
     });
   }
 
@@ -51,7 +51,7 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
     if (cfg == null) return;
     setState(() {
       cfg.set(moduleId, layerId, level, enabled);
-      MyLogger.updateConfig(cfg);
+      LogLens.updateConfig(cfg);
     });
   }
 
@@ -114,7 +114,7 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
                               if (cfg == null) return;
                               setState(() {
                                 cfg.setModuleLayerAll(m.id, layer.id, v);
-                                MyLogger.updateConfig(cfg);
+                                LogLens.updateConfig(cfg);
                               });
                             },
                           ),
@@ -188,7 +188,7 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
   @override
   void initState() {
     super.initState();
-    _subscription = MyLogger.stream.listen((e) {
+    _subscription = LogLens.stream.listen((e) {
       if (!mounted) return;
       setState(() {
         _buffer.add(e);
