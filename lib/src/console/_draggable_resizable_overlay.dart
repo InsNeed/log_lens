@@ -120,6 +120,30 @@ class _DraggableResizableOverlayState
         _rect = Rect.fromLTWH(_rect.left, _rect.top, _rect.width, newHeight));
   }
 
+  void _onResizeBottomLeft(DragUpdateDetails d, Size screen) {
+    // Horizontal (left edge)
+    double newLeft = _rect.left + d.delta.dx;
+    double newWidth = _rect.width - d.delta.dx;
+    if (newWidth < _minSize.width) {
+      newLeft -= (_minSize.width - newWidth);
+      newWidth = _minSize.width;
+    }
+    final double safeMaxLeft = (_rect.right - _minSize.width) >= 0
+        ? (_rect.right - _minSize.width)
+        : 0.0;
+    newLeft = newLeft.clamp(0.0, safeMaxLeft);
+
+    // Vertical (bottom edge)
+    final double maxHeight = screen.height - _rect.top;
+    final double safeMaxHeight =
+        maxHeight >= _minSize.height ? maxHeight : _minSize.height;
+    final double newHeight =
+        (_rect.height + d.delta.dy).clamp(_minSize.height, safeMaxHeight);
+
+    setState(
+        () => _rect = Rect.fromLTWH(newLeft, _rect.top, newWidth, newHeight));
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -210,6 +234,23 @@ class _DraggableResizableOverlayState
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onPanUpdate: (d) => _onResize(d, screen),
+                        child: const Icon(Icons.drag_handle, size: 16),
+                      ),
+                    ),
+                  ),
+
+                // Resize handle (bottom-left)
+                if (!_isMinimized)
+                  Positioned(
+                    left: 0,
+                    bottom: 0,
+                    width: _handleSize,
+                    height: _handleSize,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.resizeUpRightDownLeft,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onPanUpdate: (d) => _onResizeBottomLeft(d, screen),
                         child: const Icon(Icons.drag_handle, size: 16),
                       ),
                     ),

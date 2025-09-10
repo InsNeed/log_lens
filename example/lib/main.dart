@@ -41,10 +41,9 @@ class ConsoleDemo extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const Text('''Guide:
-1. Initialize: MyLogger.init()
-2. Register module: MyLogger.registerModule("moduleId")
-3. Register layer: MyLogger.registerLayer("layerId")
-4. Log: MyLogger.i(file, msg, moduleName, layerName)
+1. Initialize and Register: MyLogger.init()
+2. Log: MyLogger.i(file, msg, moduleName, layerName)
+3  Config LoggerConfig().setModuleLevel(module, level, enabled)
 '''),
           const SizedBox(height: 8),
           FilledButton(
