@@ -266,7 +266,7 @@
       "languageVersion": "3.3"
     },
     {
-      "name": "my_logger",
+      "name": "loglens",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "2.17"

@@ -16,17 +16,17 @@ A modular, embeddable logging toolkit for Flutter apps. It provides:
 
 ## Install
 
-Add to your `pubspec.yaml`:
+Add to your `pubspec.yaml` (if your package name is `loglens`):
 
 ```yaml
 dependencies:
-  my_logger: ^0.1.0
+  loglens: ^0.1.0
 ```
 
 Import:
 
 ```dart
-import 'package:my_logger/my_logger.dart';
+import 'package:loglens/loglens.dart';
 ```
 
 ## Quick Start

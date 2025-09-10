@@ -1,7 +1,7 @@
 library my_logger;
 
 import 'package:flutter/material.dart';
-import 'package:my_logger/src/logger.dart';
+import 'package:loglens/src/logger.dart';
 import 'src/console/log_console.dart';
 
 export 'src/registry.dart';

@@ -1,10 +1,10 @@
 {
   "roots": [
-    "my_logger"
+    "loglens"
   ],
   "packages": [
     {
-      "name": "my_logger",
+      "name": "loglens",
       "version": "0.1.0",
       "dependencies": [
         "flutter",

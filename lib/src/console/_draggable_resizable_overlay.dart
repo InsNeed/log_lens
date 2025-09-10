@@ -25,7 +25,7 @@ class _DraggableResizableOverlayState
   static const double _handleSize = 16;
   static const double _edgeThickness = 8;
   static const double _miniHeight = 50;
-  static const double _miniWidth =50;
+  static const double _miniWidth = 50;
 
   @override
   void initState() {
