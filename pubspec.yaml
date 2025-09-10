@@ -2,9 +2,9 @@ name: loglens
 description: A flexible, extensible logging utility with dynamic modules/layers, persistence, and a simple console UI.
 version: 0.1.0
 
-homepage: https://github.com/InsNeed/loglens
-repository: https://github.com/InsNeed/loglens
-issue_tracker: https://github.com/InsNeed/loglens/issues
+homepage: https://github.com/InsNeed/log_lens
+repository: https://github.com/InsNeed/log_lens
+issue_tracker: https://github.com/InsNeed/log_lens/issues
 topics:
   - logging
   - overlay

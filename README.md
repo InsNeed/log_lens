@@ -31,11 +31,24 @@ import 'package:loglens/loglens.dart';
 
 ## Quick Start
 
-Define your enums (recommended):
+Define enums that match your project’s modules and layers. For example:
+
+- Modules: login, payment, order, blacklist
+- Layers (MVVM-ish): UI, View, ViewModel, Domain, Repository, DataSource, Network/API, Service, Cache
 
 ```dart
-enum LogModules { auth, pay }
-enum LogLayers { ui, dataSource }
+enum LogModules { auth, pay, order, blacklist }
+enum LogLayers {
+  ui,
+  view,
+  viewModel,
+  domain,
+  repository,
+  dataSource,
+  network, // or api
+  service,
+  cache,
+}
 ```
 
 Initialize:
@@ -56,7 +69,7 @@ LogLens.w('example.dart', 'Warning sample', LogModules.pay, LogLayers.ui);
 LogLens.e('example.dart', 'Error sample', LogModules.pay, LogLayers.dataSource, 'SomeError');
 ```
 
-Show floating overlay:
+Open the floating debug window:
 
 ```dart
 final controller = FloatingLogConsoleController();
@@ -76,10 +89,6 @@ Navigator.of(context).push(
 
 - `LogLens.init({ LoggerStore? store, LoggerConfig? config, List<Enum>? defaultModules, List<Enum>? defaultLayers })`
 - `LogLens.d/i/w/e(String file, dynamic message, Enum module, Enum layer, [error, stacktrace])`
-- `LogLens.stream` to subscribe realtime entries
-- `LogLens.config` and `LogLens.updateConfig` to persist toggles
-- `FloatingLogConsoleController`, `FloatingLogConsoleButton`
-- `LogConsolePage`, `LogConsolePanel`
 
 ## Persistence
 
