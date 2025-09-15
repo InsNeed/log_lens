@@ -67,14 +67,6 @@ class ConsoleDemo extends StatelessWidget {
             child: const Text('Write Sample Logs'),
           ),
           const SizedBox(height: 8),
-          const Text('Or open the full console page:'),
-          const SizedBox(height: 8),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LogConsolePage()),
-            ),
-            child: const Text('Open Console Page'),
-          ),
         ],
       ),
     );

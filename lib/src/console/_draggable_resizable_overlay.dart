@@ -309,7 +309,7 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                     // Content
                     if (!_isMinimized)
                       Positioned.fill(
-                        top: 30,
+                        top: 40,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: _showSettings
@@ -337,6 +337,104 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                               ),
                             ),
                           ),
+                        ),
+                      ),
+
+                    // Explicit edge/corner hit zones (Windows-friendly)
+                    if (!_isMinimized)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) =>
+                              _applyResizeDelta(d.delta, screen, {_Edge.left}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) =>
+                              _applyResizeDelta(d.delta, screen, {_Edge.right}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        height: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) =>
+                              _applyResizeDelta(d.delta, screen, {_Edge.top}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) => _applyResizeDelta(
+                              d.delta, screen, {_Edge.bottom}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        width: _hitPad,
+                        height: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) => _applyResizeDelta(
+                              d.delta, screen, {_Edge.left, _Edge.top}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        width: _hitPad,
+                        height: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) => _applyResizeDelta(
+                              d.delta, screen, {_Edge.right, _Edge.top}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        left: 0,
+                        bottom: 0,
+                        width: _hitPad,
+                        height: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) => _applyResizeDelta(
+                              d.delta, screen, {_Edge.left, _Edge.bottom}),
+                        ),
+                      ),
+                    if (!_isMinimized)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        width: _hitPad,
+                        height: _hitPad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) => _applyResizeDelta(
+                              d.delta, screen, {_Edge.right, _Edge.bottom}),
                         ),
                       ),
                   ],
