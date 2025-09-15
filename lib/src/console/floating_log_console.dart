@@ -1,4 +1,6 @@
-part of loglens;
+import 'package:flutter/material.dart';
+
+import '_draggable_resizable_overlay.dart';
 
 class FloatingLogConsoleController {
   OverlayEntry? _entry;
@@ -11,13 +13,10 @@ class FloatingLogConsoleController {
     _rect = initialRect;
     final overlay = Overlay.of(context, rootOverlay: true);
     _entry = OverlayEntry(
-      builder: (ctx) => _DraggableResizableOverlay(
+      builder: (ctx) => DraggableResizableOverlay(
         initialRect: _rect,
         onClose: hide,
-        child: const Padding(
-          padding: EdgeInsets.all(8.0),
-          child: LogConsolePanel(),
-        ),
+        child: const SizedBox.shrink(),
       ),
     );
     overlay.insert(_entry!);
@@ -64,10 +63,17 @@ class _FloatingLogConsoleButtonState extends State<FloatingLogConsoleButton> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(child: const SizedBox.shrink()),
-      ],
+    return Align(
+      alignment: widget.alignment,
+      child: Padding(
+        padding: widget.padding,
+        child: FloatingActionButton.extended(
+          onPressed: () =>
+              _controller.toggle(context, initialRect: widget.initialRect),
+          icon: const Icon(Icons.bug_report),
+          label: Text(_controller.isShowing ? 'Close Logs' : 'Open Logs'),
+        ),
+      ),
     );
   }
 }

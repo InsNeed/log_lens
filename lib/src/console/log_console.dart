@@ -31,7 +31,7 @@ class LogConsolePanel extends StatefulWidget {
 class _LogConsolePanelState extends State<LogConsolePanel> {
   final List<LogEntry> _buffer = <LogEntry>[];
   static const int _maxBuffer = 500;
-  bool _showModules = true;
+  bool _showModules = false;
   StreamSubscription<LogEntry>? _subscription;
 
   LoggerConfig? get _config => LogLens.config;
@@ -222,8 +222,6 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        _buildModules(),
         const SizedBox(height: 8),
         DecoratedBox(
           decoration: BoxDecoration(

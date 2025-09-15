@@ -77,7 +77,6 @@ class ConsoleDemo extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingLogConsoleButton(controller: controller),
     );
   }
 }

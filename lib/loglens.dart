@@ -1,5 +1,12 @@
 library loglens;
 
+export 'src/registry.dart';
+export 'src/config.dart';
+export 'src/logger.dart';
+export 'src/console/log_console.dart';
+export 'src/console/floating_log_console.dart';
+export 'src/persistence/store.dart';
+
 import 'package:flutter/material.dart';
 import 'package:loglens/src/logger.dart';
 import 'src/console/log_console.dart';
@@ -9,7 +16,3 @@ export 'src/config.dart';
 export 'src/logger.dart';
 export 'src/console/log_console.dart';
 export 'src/persistence/store.dart';
-
-// Internal parts
-part 'src/console/_draggable_resizable_overlay.dart';
-part 'src/console/floating_log_console.dart';
