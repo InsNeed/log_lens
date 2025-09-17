@@ -20,7 +20,7 @@ Add to your `pubspec.yaml` (if your package name is `loglens`):
 
 ```yaml
 dependencies:
-  loglens: ^0.1.0
+  loglens: ^0.2.1
 ```
 
 Import:
@@ -73,7 +73,7 @@ Open the floating debug window:
 
 ```dart
 final controller = FloatingLogConsoleController();
-FloatingLogConsoleButton(controller: controller);
+controller.toggle(context)
 // Or programmatically: controller.toggle(context);
 ```
 
