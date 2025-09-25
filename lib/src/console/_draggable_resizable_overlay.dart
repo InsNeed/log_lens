@@ -41,6 +41,8 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
   Offset? _lastGlobalPos;
   SystemMouseCursor _currentCursor = SystemMouseCursors.basic;
   final GlobalKey _hitKey = GlobalKey();
+  final LogConsolePanelController _panelController =
+      LogConsolePanelController();
 
   // (enum moved to top-level)
 
@@ -51,9 +53,14 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
     if (widget.initialRect == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final Size screen = MediaQuery.of(context).size * 0.8;
+        final Size screen = MediaQuery.of(context).size;
+        final double desired = screen.width * 0.8;
+        final double width = desired.clamp(0, 500).toDouble();
+        final double height = _rect.height;
+        final double left = (screen.width - width) / 2;
+        final double top = (screen.height - height) / 2;
         setState(() {
-          _rect = Rect.fromLTWH(0, _rect.top, screen.width, _rect.height);
+          _rect = Rect.fromLTWH(left, top, width, height);
         });
       });
     }
@@ -260,7 +267,7 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                       ),
                     ),
 
-                    // Top-right round buttons
+                    // Top-right row: Logs/Clear + Settings/Minimize/Close
                     if (!_isMinimized)
                       Positioned(
                         right: 8,
@@ -268,6 +275,14 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            _circleButton(
+                              tooltip: 'Clear',
+                              icon: Icons.delete_outline,
+                              onTap: () async {
+                                _panelController.clear();
+                              },
+                            ),
+                            const SizedBox(width: 12),
                             _circleButton(
                               tooltip: _showSettings
                                   ? 'Back to Logs'
@@ -293,6 +308,14 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                           ],
                         ),
                       ),
+                    // Left-aligned Logs label on the same top bar
+                    if (!_isMinimized)
+                      const Positioned(
+                        left: 8,
+                        top: 10,
+                        child: Text('Logs',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
 
                     // Back arrow when settings open (top-left)
                     if (_showSettings && !_isMinimized)
@@ -306,15 +329,15 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                         ),
                       ),
 
-                    // Content
+                    // Content (panel includes its own top bar: Logs + Clear)
                     if (!_isMinimized)
                       Positioned.fill(
-                        top: 40,
+                        top: 44,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: _showSettings
                               ? _SettingsPanel()
-                              : const LogConsolePanel(),
+                              : LogConsolePanel(controller: _panelController),
                         ),
                       ),
                     if (_isMinimized)

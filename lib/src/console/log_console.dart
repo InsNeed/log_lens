@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 import '../config.dart';
 import '../logger.dart';
 import '../registry.dart';
+
+class LogConsolePanelController {
+  VoidCallback? _clear;
+  void _bindClear(VoidCallback fn) => _clear = fn;
+  void clear() => _clear?.call();
+}
 
 class LogConsolePage extends StatelessWidget {
   const LogConsolePage({super.key});
@@ -22,7 +29,8 @@ class LogConsolePage extends StatelessWidget {
 
 /// Optimized, compact console panel suitable for embedding or overlay
 class LogConsolePanel extends StatefulWidget {
-  const LogConsolePanel({super.key});
+  final LogConsolePanelController? controller;
+  const LogConsolePanel({super.key, this.controller});
 
   @override
   State<LogConsolePanel> createState() => _LogConsolePanelState();
@@ -172,6 +180,20 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
     return '[$time] ${e.level.name.toUpperCase()}  ${e.moduleId}/${e.layerId}  ${e.fileName}: ${e.message}';
   }
 
+  Icon _levelIcon(LogLevel level) {
+    switch (level) {
+      case LogLevel.debug:
+        return const Icon(Icons.bug_report, color: Colors.blueGrey, size: 14);
+      case LogLevel.info:
+        return const Icon(Icons.info, color: Colors.blue, size: 14);
+      case LogLevel.warning:
+        return const Icon(Icons.warning_amber_rounded,
+            color: Colors.orange, size: 14);
+      case LogLevel.error:
+        return const Icon(Icons.error_outline, color: Colors.red, size: 14);
+    }
+  }
+
   Color _levelColor(LogLevel level) {
     switch (level) {
       case LogLevel.debug:
@@ -188,6 +210,23 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
   @override
   void initState() {
     super.initState();
+    // bind controller
+    widget.controller?._bindClear(() async {
+      await LogLens.clearEntries();
+      if (!mounted) return;
+      setState(() => _buffer.clear());
+    });
+    // load persisted
+    () async {
+      final persisted = await LogLens.loadEntries(limit: _maxBuffer);
+      if (!mounted) return;
+      setState(() {
+        _buffer
+          ..clear()
+          ..addAll(persisted);
+      });
+    }();
+    // live stream
     _subscription = LogLens.stream.listen((e) {
       if (!mounted) return;
       setState(() {
@@ -210,19 +249,7 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
     return SingleChildScrollView(
         child: Column(
       children: [
-        // Header actions
-        Row(
-          children: [
-            const Text('Logs', style: TextStyle(fontWeight: FontWeight.w700)),
-            const Spacer(),
-            IconButton(
-              tooltip: 'Clear',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => setState(() => _buffer.clear()),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
+        // Only list. Header moved to overlay top bar.
         DecoratedBox(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
@@ -233,7 +260,11 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: _buffer.isEmpty
-                ? const Center(child: Text('No logs'))
+                ? const Center(
+                    child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('No logs'),
+                  ))
                 : ListView.separated(
                     reverse: true,
                     shrinkWrap: true,
@@ -241,41 +272,125 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
                     itemCount: _buffer.length,
                     separatorBuilder: (_, __) => Divider(
                         height: 1,
-                        color:
-                            Theme.of(context).dividerColor.withOpacity(0.08)),
+                        color: Theme.of(context).dividerColor.withOpacity(0.2)),
                     itemBuilder: (context, index) {
                       final entry = _buffer[_buffer.length - 1 - index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _formatEntry(entry),
-                              style: TextStyle(
-                                color: _levelColor(entry.level),
-                                fontFamily: 'monospace',
-                                fontSize: 13,
-                              ),
-                            ),
-                            if (entry.error != null || entry.stackTrace != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  '${entry.error ?? ''}\n${entry.stackTrace ?? ''}',
+                      final textColor = _levelColor(entry.level);
+                      final time =
+                          entry.timestamp.toIso8601String().substring(11, 19);
+                      final levelStr = entry.level.name.toUpperCase();
+                      final header = '${entry.moduleId}  ${entry.layerId}';
+                      final msg = '${entry.message}';
+                      final footer = '${entry.fileName}  $time';
+                      final fullText =
+                          'Module: ${entry.moduleId}  Layer: ${entry.layerId}\n'
+                                  'Level: $levelStr\n'
+                                  'Message: ${entry.message}\n'
+                                  'File: ${entry.fileName}  Time: $time' +
+                              ((entry.error != null || entry.stackTrace != null)
+                                  ? '\nError: ${entry.error ?? ''}\nStackTrace: ${entry.stackTrace ?? ''}'
+                                  : '');
+                      return Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: _levelIcon(entry.level),
+                                    ),
+                                    SelectableText(
+                                      header,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                SelectableText(
+                                  msg,
                                   style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withOpacity(0.7),
+                                    color: textColor,
                                     fontFamily: 'monospace',
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.insert_drive_file,
+                                        size: 12, color: Colors.grey),
+                                    const SizedBox(width: 2),
+                                    SelectableText(
+                                      entry.fileName,
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.7),
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Icon(Icons.access_time,
+                                        size: 12, color: Colors.grey),
+                                    const SizedBox(width: 2),
+                                    SelectableText(
+                                      time,
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.7),
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (entry.error != null ||
+                                    entry.stackTrace != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: SelectableText(
+                                      '${entry.error ?? ''}\n${entry.stackTrace ?? ''}',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.7),
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            right: 6,
+                            bottom: 6,
+                            child: InkWell(
+                              onTap: () async {
+                                await Clipboard.setData(
+                                    ClipboardData(text: fullText));
+                              },
+                              child: const Icon(Icons.copy, size: 10),
+                            ),
+                          ),
+                        ],
                       );
                     },
                   ),

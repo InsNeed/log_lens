@@ -1,8 +1,18 @@
 # Changelog
 
-## 0.2.1
+## 0.2.2
 
-- Update README.md
+feat(console): add clear functionality and improve overlay layout
+
+- Add LogConsolePanelController to manage clear functionality
+- Implement clear button in overlay header with controller binding
+- Center overlay on screen with constrained width (max 500px)
+- Add "Logs" label to overlay header for better context
+- Adjust content positioning to accommodate new header elements
+- Replace static LogConsolePanel with controlled instance
+- Remove redundant top bar from panel content since header now provides controls
+
+The changes improve the overlay usability by adding clear functionality and making the layout more intuitive with proper labeling and centered positioning.
 
 ## 0.2.0
 

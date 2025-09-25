@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,6 +21,7 @@ class SharedPrefsLoggerStore implements LoggerStore {
   static const String _logKey = 'my_logger_logs_v1';
 
   SharedPreferences? _prefs;
+  Future<void> _writeQueue = Future.value();
 
   @override
   Future<void> init() async {
@@ -41,9 +43,12 @@ class SharedPrefsLoggerStore implements LoggerStore {
 
   @override
   Future<void> append(LogEntry entry) async {
-    final list = await _readList();
-    list.add(_encodeEntry(entry));
-    await _prefs?.setStringList(_logKey, list);
+    _writeQueue = _writeQueue.then((_) async {
+      final list = await _readList();
+      list.add(_encodeEntry(entry));
+      await _prefs?.setStringList(_logKey, list);
+    });
+    return _writeQueue;
   }
 
   @override
@@ -56,7 +61,10 @@ class SharedPrefsLoggerStore implements LoggerStore {
 
   @override
   Future<void> clear() async {
-    await _prefs?.remove(_logKey);
+    _writeQueue = _writeQueue.then((_) async {
+      await _prefs?.remove(_logKey);
+    });
+    return _writeQueue;
   }
 
   Future<List<String>> _readList() async {

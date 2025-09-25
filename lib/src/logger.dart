@@ -99,6 +99,14 @@ class LogLens {
     _store?.saveConfig(config);
   }
 
+  static Future<List<LogEntry>> loadEntries({int? limit}) async {
+    return await _store?.loadEntries(limit: limit) ?? <LogEntry>[];
+  }
+
+  static Future<void> clearEntries() async {
+    await _store?.clear();
+  }
+
   static void registerLayer(String id, {String? displayName}) {
     LoggerRegistry.instance.registerLayer(id, displayName: displayName);
   }
