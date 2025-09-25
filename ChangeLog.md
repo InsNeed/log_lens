@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2
+## 0.3.0
 
 feat(console): add clear functionality and improve overlay layout
 
