@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1
+
+feat(overlay): improve draggable resizable overlay behavior
+
+- Update package version to 0.3.0
+- Add \_miniHitScale constant for better touch target sizing
+- Refactor edge resizing logic to handle minimum size constraints more precisely
+- Simplify drag movement by removing unnecessary clamping
+- Implement edge snapping for minimized overlay to prevent it from going off-screen
+- Improve overall user experience with more intuitive resize and drag interactions
+- Optimize console list rendering with RepaintBoundary + ListView.builder + stable keys
+- Add initial loading state via FutureBuilder for persisted logs
+- Add search bar with case-sensitive toggle in console panel
+
 ## 0.3.0
 
 feat(console): add clear functionality and improve overlay layout

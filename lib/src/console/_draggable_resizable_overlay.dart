@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -36,6 +38,7 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
   static const double _touchHitPad = 24;
   static const double _miniHeight = 24;
   static const double _miniWidth = 32;
+  static const double _miniHitScale = 1.2;
 
   Set<_Edge>? _activeEdges;
   Offset? _lastGlobalPos;
@@ -113,30 +116,36 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
     double newHeight = _rect.height;
 
     if (edges.contains(_Edge.left)) {
-      newLeft =
-          (_rect.left + delta.dx).clamp(0.0, _rect.right - _minSize.width);
-      newWidth =
-          (_rect.right - newLeft).clamp(_minSize.width, screen.width - newLeft);
+      final double attemptLeft = _rect.left + delta.dx;
+      final double desiredWidth = _rect.right - attemptLeft;
+      if (desiredWidth < _minSize.width) {
+        newLeft = _rect.right - _minSize.width;
+        newWidth = _minSize.width;
+      } else {
+        newLeft = attemptLeft;
+        newWidth = desiredWidth;
+      }
     }
     if (edges.contains(_Edge.right)) {
-      final maxWidth = screen.width - _rect.left;
-      newWidth = (_rect.width + delta.dx).clamp(_minSize.width,
-          maxWidth >= _minSize.width ? maxWidth : _minSize.width);
+      final double attemptWidth = _rect.width + delta.dx;
+      newWidth = attemptWidth < _minSize.width ? _minSize.width : attemptWidth;
     }
     if (edges.contains(_Edge.top)) {
-      newTop =
-          (_rect.top + delta.dy).clamp(0.0, _rect.bottom - _minSize.height);
-      newHeight = (_rect.bottom - newTop)
-          .clamp(_minSize.height, screen.height - newTop);
+      final double attemptTop = _rect.top + delta.dy;
+      final double desiredHeight = _rect.bottom - attemptTop;
+      if (desiredHeight < _minSize.height) {
+        newTop = _rect.bottom - _minSize.height;
+        newHeight = _minSize.height;
+      } else {
+        newTop = attemptTop;
+        newHeight = desiredHeight;
+      }
     }
     if (edges.contains(_Edge.bottom)) {
-      final maxHeight = screen.height - _rect.top;
-      newHeight = (_rect.height + delta.dy).clamp(_minSize.height,
-          maxHeight >= _minSize.height ? maxHeight : _minSize.height);
+      final double attemptHeight = _rect.height + delta.dy;
+      newHeight =
+          attemptHeight < _minSize.height ? _minSize.height : attemptHeight;
     }
-
-    newLeft = newLeft.clamp(0.0, screen.width - _minSize.width);
-    newTop = newTop.clamp(0.0, screen.height - _minSize.height);
 
     setState(() {
       _rect = Rect.fromLTWH(newLeft, newTop, newWidth, newHeight);
@@ -198,14 +207,73 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
   }
 
   void _onDrag(DragUpdateDetails d, Size screen) {
-    final double visibleWidth = _isMinimized ? _miniWidth : _rect.width;
-    final double visibleHeight = _isMinimized ? _miniHeight : _rect.height;
-    final double maxLeft = screen.width - visibleWidth;
-    final double safeMaxLeft = maxLeft >= 0 ? maxLeft : 0.0;
-    final double maxTop = screen.height - visibleHeight;
-    final double safeMaxTop = maxTop >= 0 ? maxTop : 0.0;
-    final newLeft = (_rect.left + d.delta.dx).clamp(0.0, safeMaxLeft);
-    final newTop = (_rect.top + d.delta.dy).clamp(0.0, safeMaxTop);
+    final double newLeft = _rect.left + d.delta.dx;
+    final double newTop = _rect.top + d.delta.dy;
+    setState(() =>
+        _rect = Rect.fromLTWH(newLeft, newTop, _rect.width, _rect.height));
+  }
+
+  void _snapMinimizedToNearestEdgeIfOut(Size screen) {
+    if (!_isMinimized) return;
+    final double miniHitW = _miniWidth * _miniHitScale;
+    final double miniHitH = _miniHeight * _miniHitScale;
+    final double left = _rect.left;
+    final double top = _rect.top;
+    final double right = left + miniHitW;
+    final double bottom = top + miniHitH;
+    final bool out =
+        left < 0 || top < 0 || right > screen.width || bottom > screen.height;
+
+    double newLeft = left;
+    double newTop = top;
+
+    if (out) {
+      // If already out of bounds, snap to the offending nearest edge first
+      if (left < 0) newLeft = 0;
+      if (right > screen.width) newLeft = screen.width - miniHitW;
+      if (top < 0) newTop = 0;
+      if (bottom > screen.height) newTop = screen.height - miniHitH;
+    } else {
+      // Otherwise snap to the nearest edge by center distance
+      final double cx = left + miniHitW / 2;
+      final double cy = top + miniHitH / 2;
+      final double distLeft = cx;
+      final double distRight = (screen.width - cx);
+      final double distTop = cy;
+      final double distBottom = (screen.height - cy);
+
+      final List<MapEntry<String, double>> dists = [
+        MapEntry('left', distLeft),
+        MapEntry('right', distRight),
+        MapEntry('top', distTop),
+        MapEntry('bottom', distBottom),
+      ]..sort((a, b) => a.value.compareTo(b.value));
+
+      switch (dists.first.key) {
+        case 'left':
+          newLeft = 0;
+          break;
+        case 'right':
+          newLeft = screen.width - miniHitW;
+          break;
+        case 'top':
+          newTop = 0;
+          break;
+        case 'bottom':
+          newTop = screen.height - miniHitH;
+          break;
+      }
+      //print('Snapping to ${dists.first.key}');
+    }
+
+    // Final safety clamp
+    if (screen.width >= miniHitW) {
+      newLeft = newLeft.clamp(0.0, screen.width - miniHitW);
+    }
+    if (screen.height >= miniHitH) {
+      newTop = newTop.clamp(0.0, screen.height - miniHitH);
+    }
+
     setState(() =>
         _rect = Rect.fromLTWH(newLeft, newTop, _rect.width, _rect.height));
   }
@@ -217,11 +285,14 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
     final media = MediaQuery.of(context);
     final Size screen = media.size;
 
+    final double miniHitW = _miniWidth * _miniHitScale;
+    final double miniHitH = _miniHeight * _miniHitScale;
+
     return Positioned(
       left: _rect.left,
       top: _rect.top,
-      width: _isMinimized ? _miniWidth : _rect.width,
-      height: _isMinimized ? _miniHeight : _rect.height,
+      width: _isMinimized ? miniHitW : _rect.width,
+      height: _isMinimized ? miniHitH : _rect.height,
       child: Material(
         elevation: 12,
         color: Colors.transparent,
@@ -263,6 +334,9 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                             return; // Don't drag while resizing
                           _onDrag(d, screen);
                         },
+                        onPanEnd: (_) {
+                          _snapMinimizedToNearestEdgeIfOut(screen);
+                        },
                         child: const SizedBox.shrink(),
                       ),
                     ),
@@ -297,7 +371,18 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                             _circleButton(
                               tooltip: 'Minimize',
                               icon: Icons.horizontal_rule,
-                              onTap: () => setState(() => _isMinimized = true),
+                              onTap: () {
+                                setState(() => _isMinimized = true);
+                                final size = MediaQuery.of(context).size;
+                                _snapMinimizedToNearestEdgeIfOut(size);
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  _snapMinimizedToNearestEdgeIfOut(size);
+                                  // microtask for extra safety
+                                  scheduleMicrotask(() =>
+                                      _snapMinimizedToNearestEdgeIfOut(size));
+                                });
+                              },
                             ),
                             const SizedBox(width: 8),
                             _circleButton(
@@ -342,20 +427,27 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
                       ),
                     if (_isMinimized)
                       Positioned.fill(
-                        child: Center(
-                          child: Material(
-                            color: Colors.white,
-                            shape: const CircleBorder(),
-                            elevation: 6,
-                            shadowColor: Colors.black26,
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: () => setState(() => _isMinimized = false),
-                              child: const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: Center(
-                                  child: Icon(Icons.crop_square, size: 10),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanUpdate: (d) => _onDrag(d, screen),
+                          onPanEnd: (_) =>
+                              _snapMinimizedToNearestEdgeIfOut(screen),
+                          child: Center(
+                            child: Material(
+                              color: Colors.white,
+                              shape: const CircleBorder(),
+                              elevation: 6,
+                              shadowColor: Colors.black26,
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () =>
+                                    setState(() => _isMinimized = false),
+                                child: const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: Center(
+                                    child: Icon(Icons.crop_square, size: 10),
+                                  ),
                                 ),
                               ),
                             ),
