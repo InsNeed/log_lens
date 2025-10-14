@@ -20,7 +20,7 @@ Add to your `pubspec.yaml` (if your package name is `loglens`):
 
 ```yaml
 dependencies:
-  loglens: ^0.2.1
+  loglens: ^0.3.1
 ```
 
 Import:
@@ -85,9 +85,30 @@ Navigator.of(context).push(
 );
 ```
 
+### Initialization with onLog callback
+
+You can intercept every log entry by providing `onLog` during initialization:
+
+```dart
+await LogLens.init(
+  defaultModules: LogModules.values,
+  defaultLayers: LogLayers.values,
+  onLog: (entry) {
+    // e.g., forward to analytics, send to server, custom print, etc.
+    // print('[onLog] ${entry.level.name} ${entry.moduleId}/${entry.layerId} ${entry.message}');
+  },
+);
+```
+
+LogEntry provides:
+
+- `timestamp`, `level` (debug/info/warning/error)
+- `moduleId`, `layerId`
+- `fileName`, `message`, `error`, `stackTrace`
+
 ## API Highlights
 
-- `LogLens.init({ LoggerStore? store, LoggerConfig? config, List<Enum>? defaultModules, List<Enum>? defaultLayers })`
+- `LogLens.init({ LoggerStore? store, LoggerConfig? config, List<Enum>? defaultModules, List<Enum>? defaultLayers, void Function(LogEntry)? onLog })`
 - `LogLens.d/i/w/e(String file, dynamic message, Enum module, Enum layer, [error, stacktrace])`
 
 ## Persistence

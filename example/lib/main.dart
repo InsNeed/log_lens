@@ -15,6 +15,7 @@ void main() async {
   await LogLens.init(
     defaultModules: LogModules.values,
     defaultLayers: LogLayers.values,
+    onLog: (log) => print(log),
   );
   runApp(const MyApp());
 }
@@ -53,8 +54,8 @@ class ConsoleDemo extends StatelessWidget {
           FilledButton.tonal(
             onPressed: () {
               //login
-              LogLens.i('example.dart', 'User pressed login button',
-                  LogModules.auth, LogLayers.ui);
+              LogLens.i('exampleAAAAAAAAAAAAAAAAAAAAAAAA.dart',
+                  'User pressed login button', LogModules.auth, LogLayers.ui);
 
               //failed
               LogLens.e('UserLogin.dart', 'UserLogin Failed', LogModules.auth,

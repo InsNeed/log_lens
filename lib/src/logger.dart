@@ -49,6 +49,7 @@ class LogLens {
       StreamController.broadcast();
   static LoggerConfig? _config;
   static LoggerStore? _store;
+  static void Function(LogEntry)? _onLog;
 
   static Stream<LogEntry> get stream => _controller.stream;
   static LoggerConfig? get config => _config;
@@ -58,9 +59,11 @@ class LogLens {
     LoggerConfig? config,
     List<Enum>? defaultModules,
     List<Enum>? defaultLayers,
+    void Function(LogEntry)? onLog,
   }) async {
     _store = store ?? SharedPrefsLoggerStore();
     await _store!.init();
+    _onLog = onLog;
 
     // default layers
     final reg = LoggerRegistry.instance;
@@ -176,6 +179,10 @@ class LogLens {
       error: error,
       stackTrace: st,
     );
+    // user callback
+    try {
+      _onLog?.call(entry);
+    } catch (_) {}
     if (!_controller.isClosed) {
       _controller.add(entry);
     }
