@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+
+feat(console):
+
+- Add onLog callback in init to allow user-side handling on every log entry
+- Optimize console list rendering
+
 ## 0.3.1
 
 feat(overlay): improve draggable resizable overlay behavior
@@ -13,7 +20,6 @@ feat(overlay): improve draggable resizable overlay behavior
 - Optimize console list rendering with RepaintBoundary + ListView.builder + stable keys
 - Add initial loading state via FutureBuilder for persisted logs
 - Add search bar with case-sensitive toggle in console panel
-- Add onLog callback in init to allow user-side handling on every log entry
 
 ## 0.3.0
 
