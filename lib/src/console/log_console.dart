@@ -359,55 +359,59 @@ class LogListItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              // File row with ellipsis
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Icon(Icons.insert_drive_file,
-                      size: 12, color: Colors.grey),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    child: Text(
-                      entry.fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.7),
-                        fontFamily: 'monospace',
-                        fontSize: 12,
+              // File row with ellipsis and selection support
+              SelectionArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.insert_drive_file,
+                        size: 12, color: Colors.grey),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: Text(
+                        entry.fileName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 2),
-              // Time on a new line with ellipsis
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    child: Text(
-                      time,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.7),
-                        fontFamily: 'monospace',
-                        fontSize: 12,
+              // Time on a new line with ellipsis and selection support
+              SelectionArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: Text(
+                        time,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               if (entry.error != null || entry.stackTrace != null)
                 Padding(

@@ -60,8 +60,32 @@ class LogLens {
     List<Enum>? defaultModules,
     List<Enum>? defaultLayers,
     void Function(LogEntry)? onLog,
+    // Optional persistence callbacks; if provided, they will be used.
+    Future<void> Function()? onStoreInit,
+    Future<void> Function(LoggerConfig config)? onStoreSaveConfig,
+    Future<LoggerConfig?> Function()? onStoreLoadConfig,
+    Future<void> Function(LogEntry entry)? onStoreAppend,
+    Future<List<LogEntry>> Function({int? limit})? onStoreLoadEntries,
+    Future<void> Function()? onStoreClear,
   }) async {
-    _store = store ?? SharedPrefsLoggerStore();
+    final baseStore = store ?? SharedPrefsLoggerStore();
+    final hasCustomStoreFns = onStoreInit != null ||
+        onStoreSaveConfig != null ||
+        onStoreLoadConfig != null ||
+        onStoreAppend != null ||
+        onStoreLoadEntries != null ||
+        onStoreClear != null;
+    _store = hasCustomStoreFns
+        ? FunctionLoggerStore(
+            onInit: onStoreInit,
+            onSaveConfig: onStoreSaveConfig,
+            onLoadConfig: onStoreLoadConfig,
+            onAppend: onStoreAppend,
+            onLoadEntries: onStoreLoadEntries,
+            onClear: onStoreClear,
+            fallback: baseStore,
+          )
+        : baseStore;
     await _store!.init();
     _onLog = onLog;
 

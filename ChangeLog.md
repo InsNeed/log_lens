@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.40.0
+
+feat(storage): add rolling file-based persistence and pluggable persistence callbacks
+
+- New `FileLoggerStore` with NDJSON line format, rolling files (default 2MB/file, keep 5 files), debounced flush, and tail-optimized reading.
+- Keep config in `SharedPreferences` for backward compatibility.
+- Add init callbacks to override persistence without implementing a full store:
+  - `onStoreInit`
+  - `onStoreSaveConfig`
+  - `onStoreLoadConfig`
+  - `onStoreAppend`
+  - `onStoreLoadEntries`
+  - `onStoreClear`
+- Introduce `FunctionLoggerStore` adapter to wire the above callbacks with fallback to the default store.
+- Optimize `SharedPrefsLoggerStore`: in-memory cache, debounced flush, tail-first decoding for `limit`.
+
+These changes improve write throughput for high-frequency logging and allow apps to plug in custom storage easily.
+
 ## 0.3.2
 
 feat(console):
