@@ -1,127 +1,97 @@
 # loglens
 
-A modular, embeddable logging toolkit for Flutter apps. It provides:
-
-- Dynamic module/layer registry with per-level switches
-- In-app console page with modern, compact UI
-- Floating draggable/resizeable overlay window for live logs
-- Persistent storage via `shared_preferences`
+A modular, embeddable **pure Dart** logging toolkit. Optional Flutter UI lives in the companion package [`loglens_flutter`](packages/loglens_flutter).
 
 ## Features
 
-- Modules and layers (e.g., module=auth, layer=ui) with level toggles (debug/info/warning/error)
-- Realtime stream + in-memory buffer
-- Full console page and floating overlay window
-- Static API; enum-based initialization for readable module/layer ids
+- Dynamic module/layer registry with per-level switches
+- Realtime stream + pluggable persistence (`InMemoryLoggerStore`, `FileLoggerStore`)
+- Automatic caller file name from `StackTrace`
+- Release-mode guard (`debugGuard`, on by default)
+- Static API; enum-based module/layer ids
 
 ## Install
 
-Add to your `pubspec.yaml` (if your package name is `loglens`):
+```yaml
+dependencies:
+  loglens: ^0.5.0
+```
+
+For Flutter console UI and `SharedPreferences` storage:
 
 ```yaml
 dependencies:
-  loglens: ^0.3.1
-```
-
-Import:
-
-```dart
-import 'package:loglens/loglens.dart';
+  loglens: ^0.5.0
+  loglens_flutter: ^0.5.0
 ```
 
 ## Quick Start
 
-Define enums that match your project’s modules and layers. For example:
-
-- Modules: login, payment, order, blacklist
-- Layers (MVVM-ish): UI, View, ViewModel, Domain, Repository, DataSource, Network/API, Service, Cache
-
 ```dart
-enum LogModules { auth, pay, order, blacklist }
-enum LogLayers {
-  ui,
-  view,
-  viewModel,
-  domain,
-  repository,
-  dataSource,
-  network,
-  service,
-  cache,
-}
-```
+enum LogModules { auth, pay }
+enum LogLayers { ui, dataSource }
 
-Initialize:
-
-```dart
 await LogLens.init(
   defaultModules: LogModules.values,
   defaultLayers: LogLayers.values,
+  // debugGuard: true, // default — no logging in release/product builds
 );
+
+LogLens.i('User pressed login', LogModules.auth, LogLayers.ui);
+LogLens.e('Login failed', LogModules.auth, LogLayers.dataSource);
 ```
 
-Write logs (pass enums):
+File names are resolved automatically from the call stack — no manual `file` argument.
+
+## Release Guard
+
+By default, logging is disabled when compiled with `dart.vm.product` (release/product builds):
 
 ```dart
-LogLens.d('example.dart', 'Debug sample', LogModules.auth, LogLayers.ui);
-LogLens.i('example.dart', 'Info sample', LogModules.auth, LogLayers.dataSource);
-LogLens.w('example.dart', 'Warning sample', LogModules.pay, LogLayers.ui);
-LogLens.e('example.dart', 'Error sample', LogModules.pay, LogLayers.dataSource, 'SomeError');
+await LogLens.init(debugGuard: false); // allow logging in release
 ```
 
-Open the floating debug window:
+Pure Dart equivalent of Flutter's `kDebugMode` guard:
 
 ```dart
-final controller = FloatingLogConsoleController();
-controller.toggle(context)
-// Or programmatically: controller.toggle(context);
+import 'package:loglens/loglens.dart';
+
+if (kDebugMode) { /* ... */ }
 ```
 
-Open the full console page:
+## Flutter UI
 
 ```dart
+import 'package:loglens/loglens.dart';
+import 'package:loglens_flutter/loglens_flutter.dart';
+
+await LogLens.init(store: SharedPrefsLoggerStore());
+
+FloatingLogConsoleController().toggle(context);
 Navigator.of(context).push(
   MaterialPageRoute(builder: (_) => const LogConsolePage()),
 );
 ```
 
-### Initialization with onLog callback
-
-You can intercept every log entry by providing `onLog` during initialization:
-
-```dart
-await LogLens.init(
-  defaultModules: LogModules.values,
-  defaultLayers: LogLayers.values,
-  onLog: (entry) {
-    // e.g., forward to analytics, send to server, custom print, etc.
-    // print('[onLog] ${entry.level.name} ${entry.moduleId}/${entry.layerId} ${entry.message}');
-  },
-);
-```
-
-LogEntry provides:
-
-- `timestamp`, `level` (debug/info/warning/error)
-- `moduleId`, `layerId`
-- `fileName`, `message`, `error`, `stackTrace`
-
 ## API Highlights
 
-- `LogLens.init({ LoggerStore? store, LoggerConfig? config, List<Enum>? defaultModules, List<Enum>? defaultLayers, void Function(LogEntry)? onLog })`
-- `LogLens.d/i/w/e(String file, dynamic message, Enum module, Enum layer, [error, stacktrace])`
+- `LogLens.init({ LoggerStore? store, bool debugGuard = true, ... })`
+- `LogLens.d/i/w/e(dynamic message, Enum module, Enum layer, [error, stackTrace])`
+- `parseCallerFileName([StackTrace?])` — utility for custom integrations
 
 ## Persistence
 
-`SharedPrefsLoggerStore` is used by default. You can implement your own `LoggerStore` and pass it to `init`.
+| Store | Package | Notes |
+|-------|---------|-------|
+| `InMemoryLoggerStore` | `loglens` | Default |
+| `FileLoggerStore` | `loglens` | Rolling NDJSON files (`dart:io`) |
+| `SharedPrefsLoggerStore` | `loglens_flutter` | Flutter apps |
 
-## Screenshot
-
-![LogLens Demo](screenshot/log_lens.gif)
+Implement `LoggerStore` or use init callbacks for custom backends.
 
 ## License
 
-This project is open source under the MIT License. See [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 ## Author
 

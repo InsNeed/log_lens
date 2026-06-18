@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.40.0
+## 0.5.0
+
+**Breaking: pure Dart core**
+
+- Remove Flutter dependency from `loglens`; move console UI and `SharedPrefsLoggerStore` to `loglens_flutter`.
+- Default store is now `InMemoryLoggerStore`.
+- Add `debugGuard` init flag (default `true`) to skip logging in release/product builds.
+- Remove manual `file` parameter; caller file is parsed from `StackTrace`.
+- Export `kDebugMode` / `kReleaseMode` for pure Dart consumers.
+- `FileLoggerStore` config is stored as JSON on disk (no SharedPreferences).
+
+## 0.4.0
 
 feat(storage): add rolling file-based persistence and pluggable persistence callbacks
 
