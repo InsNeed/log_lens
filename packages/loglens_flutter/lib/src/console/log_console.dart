@@ -394,10 +394,13 @@ class LogListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final time = entry.timestamp.toIso8601String().substring(11, 19);
     final levelColor = ConsoleTheme.levelColor(entry.level);
-    final levelBg = ConsoleTheme.levelBg(entry.level);
     final levelLabel = ConsoleTheme.levelLabel(entry.level);
     final hasExtra = entry.error != null || entry.stackTrace != null;
     final fontSize = compact ? 10.0 : 11.0;
+    final baseStyle = ConsoleTheme.mono.copyWith(
+      color: ConsoleTheme.textPrimary,
+      fontSize: fontSize,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -407,92 +410,56 @@ class LogListItem extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 58,
-                    child: Text(
-                      time,
-                      style: ConsoleTheme.mono.copyWith(
-                        fontSize: fontSize,
-                        color: ConsoleTheme.textMuted,
-                      ),
+              SelectableText.rich(
+                TextSpan(
+                  style: baseStyle,
+                  children: [
+                    TextSpan(
+                      text: '$time ',
+                      style: baseStyle.copyWith(color: ConsoleTheme.textMuted),
                     ),
-                  ),
-                  Container(
-                    width: 30,
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: levelBg,
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(
-                        color: levelColor.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: Text(
-                      levelLabel,
-                      style: ConsoleTheme.mono.copyWith(
-                        fontSize: fontSize - 1,
-                        fontWeight: FontWeight.w700,
+                    TextSpan(
+                      text: '$levelLabel ',
+                      style: baseStyle.copyWith(
                         color: levelColor,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SelectableText.rich(
-                      TextSpan(
-                        style: ConsoleTheme.mono.copyWith(
-                          color: ConsoleTheme.textPrimary,
-                          fontSize: fontSize,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: '${entry.moduleId}/${entry.layerId} ',
-                            style: const TextStyle(
-                              color: ConsoleTheme.prompt,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          TextSpan(
-                            text: '${entry.fileName} ',
-                            style: const TextStyle(color: ConsoleTheme.textSecondary),
-                          ),
-                          TextSpan(text: '${entry.message}'),
-                        ],
+                    TextSpan(
+                      text: '${entry.moduleId}/${entry.layerId} ',
+                      style: baseStyle.copyWith(
+                        color: ConsoleTheme.prompt,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                ],
+                    TextSpan(
+                      text: '${entry.fileName}: ',
+                      style: baseStyle.copyWith(
+                        color: ConsoleTheme.textSecondary,
+                      ),
+                    ),
+                    TextSpan(text: '${entry.message}'),
+                  ],
+                ),
               ),
               if (hasExtra) ...[
-                const SizedBox(height: 2),
                 if (entry.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 96),
-                    child: SelectableText(
-                      '! ${entry.error}',
-                      style: ConsoleTheme.mono.copyWith(
-                        color: ConsoleTheme.levelColor(LogLevel.error),
-                        fontSize: fontSize,
-                      ),
+                  SelectableText(
+                    '  ! ${entry.error}',
+                    style: baseStyle.copyWith(
+                      color: ConsoleTheme.levelColor(LogLevel.error),
                     ),
                   ),
                 if (entry.stackTrace != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 96),
-                    child: SelectableText(
-                      '${entry.stackTrace}',
-                      style: ConsoleTheme.mono.copyWith(
-                        color: ConsoleTheme.textSecondary,
-                        fontSize: fontSize - 0.5,
-                      ),
-                      maxLines: compact ? 3 : 6,
+                  SelectableText(
+                    '  ${entry.stackTrace}',
+                    style: baseStyle.copyWith(
+                      color: ConsoleTheme.textSecondary,
+                      fontSize: fontSize - 0.5,
                     ),
+                    maxLines: compact ? 3 : 6,
                   ),
               ],
             ],
