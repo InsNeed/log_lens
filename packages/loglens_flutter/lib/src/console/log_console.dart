@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:loglens/loglens.dart';
+
+import 'console_theme.dart';
 
 class LogConsolePanelController {
   VoidCallback? _clear;
@@ -15,9 +18,15 @@ class LogConsolePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Console')),
+      backgroundColor: ConsoleTheme.shell,
+      appBar: AppBar(
+        backgroundColor: ConsoleTheme.titleBar,
+        foregroundColor: ConsoleTheme.textPrimary,
+        elevation: 0,
+        title: Text('loglens', style: ConsoleTheme.title),
+      ),
       body: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8.0),
+        padding: EdgeInsets.all(12),
         child: LogConsolePanel(),
       ),
     );
@@ -115,90 +124,44 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
   Widget build(BuildContext context) {
     final compact = widget.compact;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(0, compact ? 4 : 8, 0, compact ? 4 : 8),
-          child: SizedBox(
-            height: compact ? 32 : null,
-            child: TextField(
-              controller: _searchController,
-              style: TextStyle(
-                fontSize: compact ? 12 : 14,
-                fontFamily: 'monospace',
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                prefixIcon: Icon(Icons.search, size: compact ? 16 : 18),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_query.isNotEmpty)
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _query = '';
-                            _searchController.clear();
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(Icons.clear, size: compact ? 12 : 14),
-                        ),
-                      ),
-                    InkWell(
-                      onTap: () =>
-                          setState(() => _caseSensitive = !_caseSensitive),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.text_fields,
-                          size: compact ? 12 : 14,
-                          color: _caseSensitive
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                ),
-                hintText: 'Filter...',
-                hintStyle: TextStyle(
-                  fontSize: compact ? 12 : 14,
-                  fontFamily: 'monospace',
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: compact ? 6 : 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(compact ? 4 : 8),
-                ),
-              ),
-              onChanged: (v) => setState(() => _query = v),
-            ),
-          ),
+        _FilterBar(
+          compact: compact,
+          controller: _searchController,
+          caseSensitive: _caseSensitive,
+          hasQuery: _query.isNotEmpty,
+          onChanged: (v) => setState(() => _query = v),
+          onClear: () {
+            setState(() {
+              _query = '';
+              _searchController.clear();
+            });
+          },
+          onToggleCase: () => setState(() => _caseSensitive = !_caseSensitive),
         ),
+        SizedBox(height: compact ? 6 : 8),
         Expanded(
           child: Stack(
             children: [
               DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
-                  borderRadius: BorderRadius.circular(compact ? 4 : 8),
-                  border: Border.all(color: const Color(0xFF333333)),
+                  color: ConsoleTheme.surface,
+                  borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
+                  border: Border.all(color: ConsoleTheme.border),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(compact ? 4 : 8),
+                  borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
                   child: FutureBuilder<void>(
                     future: _initialLoadFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                        return Center(
+                          child: Text(
+                            'loading…',
+                            style: ConsoleTheme.monoSm.copyWith(
+                              color: ConsoleTheme.textMuted,
+                            ),
                           ),
                         );
                       }
@@ -216,23 +179,161 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
                 Positioned(
                   right: 8,
                   bottom: 8,
-                  child: FloatingActionButton.small(
-                    heroTag: 'log_scroll_fab',
-                    backgroundColor: const Color(0xFF404040),
-                    foregroundColor: Colors.white70,
+                  child: _ScrollTailButton(
                     onPressed: () {
                       if (!_scrollController.hasClients) return;
                       _scrollController.jumpTo(
                         _scrollController.position.maxScrollExtent,
                       );
                     },
-                    child: const Icon(Icons.arrow_downward, size: 16),
                   ),
                 ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FilterBar extends StatelessWidget {
+  final bool compact;
+  final TextEditingController controller;
+  final bool caseSensitive;
+  final bool hasQuery;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  final VoidCallback onToggleCase;
+
+  const _FilterBar({
+    required this.compact,
+    required this.controller,
+    required this.caseSensitive,
+    required this.hasQuery,
+    required this.onChanged,
+    required this.onClear,
+    required this.onToggleCase,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: compact ? 30 : 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: ConsoleTheme.surface,
+        borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
+        border: Border.all(color: ConsoleTheme.border),
+      ),
+      child: Row(
+        children: [
+          Text(
+            'grep',
+            style: ConsoleTheme.monoSm.copyWith(
+              color: ConsoleTheme.prompt,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            ' › ',
+            style: ConsoleTheme.monoSm.copyWith(color: ConsoleTheme.textMuted),
+          ),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              style: ConsoleTheme.monoSm.copyWith(color: ConsoleTheme.textPrimary),
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'filter logs…',
+                hintStyle: ConsoleTheme.monoSm.copyWith(
+                  color: ConsoleTheme.textMuted,
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: onChanged,
+            ),
+          ),
+          if (hasQuery)
+            _FilterIconButton(
+              icon: Icons.close,
+              tooltip: 'Clear',
+              onTap: onClear,
+            ),
+          _FilterIconButton(
+            icon: Icons.text_fields,
+            tooltip: 'Case sensitive',
+            active: caseSensitive,
+            onTap: onToggleCase,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool active;
+
+  const _FilterIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.active = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            icon,
+            size: 14,
+            color: active ? ConsoleTheme.levelColor(LogLevel.info) : ConsoleTheme.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScrollTailButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _ScrollTailButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ConsoleTheme.surface,
+      elevation: 2,
+      shadowColor: ConsoleTheme.shadow,
+      borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
+            border: Border.all(color: ConsoleTheme.border),
+          ),
+          child: const Icon(
+            Icons.south,
+            size: 14,
+            color: ConsoleTheme.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -254,12 +355,8 @@ class LogList extends StatelessWidget {
     if (entries.isEmpty) {
       return Center(
         child: Text(
-          'No logs',
-          style: TextStyle(
-            color: Colors.white38,
-            fontFamily: 'monospace',
-            fontSize: compact ? 11 : 12,
-          ),
+          '— no output —',
+          style: ConsoleTheme.monoSm.copyWith(color: ConsoleTheme.textMuted),
         ),
       );
     }
@@ -267,7 +364,7 @@ class LogList extends StatelessWidget {
       key: const ValueKey('log_list_boundary'),
       child: ListView.builder(
         controller: controller,
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: entries.length,
         itemBuilder: (context, index) {
           final entry = entries[entries.length - 1 - index];
@@ -284,41 +381,9 @@ class LogListItem extends StatelessWidget {
 
   const LogListItem({super.key, required this.entry, this.compact = false});
 
-  static const _mono = TextStyle(
-    fontFamily: 'monospace',
-    fontSize: 11,
-    height: 1.35,
-  );
-
-  Color _levelColor(LogLevel level) {
-    switch (level) {
-      case LogLevel.debug:
-        return const Color(0xFF9E9E9E);
-      case LogLevel.info:
-        return const Color(0xFF4FC3F7);
-      case LogLevel.warning:
-        return const Color(0xFFFFB74D);
-      case LogLevel.error:
-        return const Color(0xFFEF5350);
-    }
-  }
-
-  String _levelLabel(LogLevel level) {
-    switch (level) {
-      case LogLevel.debug:
-        return 'DBG';
-      case LogLevel.info:
-        return 'INF';
-      case LogLevel.warning:
-        return 'WRN';
-      case LogLevel.error:
-        return 'ERR';
-    }
-  }
-
   String _fullText() {
     final time = entry.timestamp.toIso8601String().substring(11, 19);
-    final level = _levelLabel(entry.level);
+    final level = ConsoleTheme.levelLabel(entry.level);
     final header =
         '[$time] $level ${entry.moduleId}/${entry.layerId} ${entry.fileName}: ${entry.message}';
     if (entry.error == null && entry.stackTrace == null) return header;
@@ -328,61 +393,106 @@ class LogListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final time = entry.timestamp.toIso8601String().substring(11, 19);
-    final levelColor = _levelColor(entry.level);
-    final levelLabel = _levelLabel(entry.level);
+    final levelColor = ConsoleTheme.levelColor(entry.level);
+    final levelBg = ConsoleTheme.levelBg(entry.level);
+    final levelLabel = ConsoleTheme.levelLabel(entry.level);
     final hasExtra = entry.error != null || entry.stackTrace != null;
-    final fontSize = compact ? 10.5 : 11.0;
+    final fontSize = compact ? 10.0 : 11.0;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => Clipboard.setData(ClipboardData(text: _fullText())),
+        hoverColor: ConsoleTheme.selection,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SelectableText.rich(
-                TextSpan(
-                  style: _mono.copyWith(color: const Color(0xFFB0BEC5), fontSize: fontSize),
-                  children: [
-                    TextSpan(text: '[$time] '),
-                    TextSpan(
-                      text: '$levelLabel ',
-                      style: TextStyle(color: levelColor, fontWeight: FontWeight.w600),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 58,
+                    child: Text(
+                      time,
+                      style: ConsoleTheme.mono.copyWith(
+                        fontSize: fontSize,
+                        color: ConsoleTheme.textMuted,
+                      ),
                     ),
-                    TextSpan(
-                      text: '${entry.moduleId}/${entry.layerId} ',
-                      style: const TextStyle(color: Color(0xFF81C784)),
+                  ),
+                  Container(
+                    width: 30,
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: levelBg,
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: levelColor.withValues(alpha: 0.25),
+                      ),
                     ),
-                    TextSpan(
-                      text: '${entry.fileName}: ',
-                      style: const TextStyle(color: Color(0xFF78909C)),
+                    child: Text(
+                      levelLabel,
+                      style: ConsoleTheme.mono.copyWith(
+                        fontSize: fontSize - 1,
+                        fontWeight: FontWeight.w700,
+                        color: levelColor,
+                      ),
                     ),
-                    TextSpan(
-                      text: '${entry.message}',
-                      style: const TextStyle(color: Color(0xFFECEFF1)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SelectableText.rich(
+                      TextSpan(
+                        style: ConsoleTheme.mono.copyWith(
+                          color: ConsoleTheme.textPrimary,
+                          fontSize: fontSize,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: '${entry.moduleId}/${entry.layerId} ',
+                            style: const TextStyle(
+                              color: ConsoleTheme.prompt,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '${entry.fileName} ',
+                            style: const TextStyle(color: ConsoleTheme.textSecondary),
+                          ),
+                          TextSpan(text: '${entry.message}'),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               if (hasExtra) ...[
+                const SizedBox(height: 2),
                 if (entry.error != null)
-                  SelectableText(
-                    '  ! ${entry.error}',
-                    style: _mono.copyWith(
-                      color: const Color(0xFFEF9A9A),
-                      fontSize: fontSize,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 96),
+                    child: SelectableText(
+                      '! ${entry.error}',
+                      style: ConsoleTheme.mono.copyWith(
+                        color: ConsoleTheme.levelColor(LogLevel.error),
+                        fontSize: fontSize,
+                      ),
                     ),
                   ),
                 if (entry.stackTrace != null)
-                  SelectableText(
-                    '  ${entry.stackTrace}',
-                    style: _mono.copyWith(
-                      color: const Color(0xFF90A4AE),
-                      fontSize: fontSize - 0.5,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 96),
+                    child: SelectableText(
+                      '${entry.stackTrace}',
+                      style: ConsoleTheme.mono.copyWith(
+                        color: ConsoleTheme.textSecondary,
+                        fontSize: fontSize - 0.5,
+                      ),
+                      maxLines: compact ? 3 : 6,
                     ),
-                    maxLines: compact ? 3 : 6,
                   ),
               ],
             ],
