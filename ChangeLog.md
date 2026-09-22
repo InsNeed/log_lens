@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1
+
+- Add `skipCallerContains` to `LogLens.init` so app-level logger wrappers
+  (e.g. `AppLogger`) are skipped when resolving the caller file name.
+- Expose `configureCallerSkipContains` for custom integrations that call
+  `parseCallerFileName` directly.
+
 ## 0.5.0
 
 **Breaking: pure Dart core**

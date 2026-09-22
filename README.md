@@ -73,11 +73,24 @@ Navigator.of(context).push(
 );
 ```
 
+## Skipping wrapper frames
+
+If you wrap `LogLens` behind an app logger, pass substrings of those frames so
+the displayed file is the real call site:
+
+```dart
+await LogLens.init(
+  skipCallerContains: const [
+    'package:my_app/core/logging/app_logger.dart',
+  ],
+);
+```
+
 ## API Highlights
 
-- `LogLens.init({ LoggerStore? store, bool debugGuard = true, ... })`
+- `LogLens.init({ LoggerStore? store, bool debugGuard = true, Iterable<String> skipCallerContains = const [], ... })`
 - `LogLens.d/i/w/e(dynamic message, Enum module, Enum layer, [error, stackTrace])`
-- `parseCallerFileName([StackTrace?])` — utility for custom integrations
+- `parseCallerFileName([StackTrace?])` / `configureCallerSkipContains` — utilities for custom integrations
 
 ## Persistence
 

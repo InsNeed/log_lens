@@ -66,6 +66,9 @@ class LogLens {
     void Function(LogEntry)? onLog,
     /// When `true` (default), logging is disabled in release/product builds.
     bool debugGuard = true,
+    /// Stack-frame substrings to skip when resolving the caller file name
+    /// (e.g. app-level wrappers like `package:my_app/logging/app_logger.dart`).
+    Iterable<String> skipCallerContains = const [],
     Future<void> Function()? onStoreInit,
     Future<void> Function(LoggerConfig config)? onStoreSaveConfig,
     Future<LoggerConfig?> Function()? onStoreLoadConfig,
@@ -74,6 +77,7 @@ class LogLens {
     Future<void> Function()? onStoreClear,
   }) async {
     _debugGuard = debugGuard;
+    configureCallerSkipContains(skipCallerContains);
     final baseStore = store ?? InMemoryLoggerStore();
     final hasCustomStoreFns = onStoreInit != null ||
         onStoreSaveConfig != null ||
