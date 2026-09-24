@@ -46,4 +46,9 @@ class LoggerRegistry {
 // default enums
 enum LoggerDefaultLayer { ui, provider, repo, dataSource, service, util }
 
-enum LoggerDefaultModule { test }
+enum LoggerDefaultModule {
+  auth,
+  pay,
+  user,
+  profile,
+}

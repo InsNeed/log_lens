@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0
+
+**Default file persistence; release still logs `info+`**
+
+- Default store: `FileLoggerStore` (was `InMemory`); rolling `5MB` × `10`, flush 100ms, optional `basePath`.
+- `debugGuard`: only skips `LogLevel.debug` in product builds (`info` / `warning` / `error` still log + persist).
+- APIs: `LogLens.flush()`, `loadStorageInfo()`, `deleteAllLogs()`; `LoggerStore.flush`.
+- `loglens_flutter`: `LogLensFlutter.init` (documents-dir files), `LogLensLifecycleFlusher`.
+- Console: hydrate from disk on open; clear is UI-only; fullscreen / display pause / copy-all.
+- `LoggerDefaultModule`: `auth`, `pay`, `user`, `profile`.
+
 ## 0.5.1
 
 - Add `skipCallerContains` to `LogLens.init` so app-level logger wrappers

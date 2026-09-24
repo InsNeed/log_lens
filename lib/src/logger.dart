@@ -30,6 +30,32 @@ class LogEntry {
   });
 }
 
+/// Snapshot of persisted log data and optional file-store metadata.
+class LogStorageInfo {
+  final String? directoryPath;
+  final int fileCount;
+  final int totalBytes;
+  final List<LogEntry> entries;
+
+  const LogStorageInfo({
+    required this.directoryPath,
+    required this.fileCount,
+    required this.totalBytes,
+    required this.entries,
+  });
+}
+
+/// On-disk file counts for [FileLoggerStore].
+class LogFileStorageStats {
+  final int fileCount;
+  final int totalBytes;
+
+  const LogFileStorageStats({
+    required this.fileCount,
+    required this.totalBytes,
+  });
+}
+
 class LogLens {
   LogLens._internal();
   static final LogLens _instance = LogLens._internal();
@@ -64,7 +90,7 @@ class LogLens {
     List<Enum>? defaultModules,
     List<Enum>? defaultLayers,
     void Function(LogEntry)? onLog,
-    /// When `true` (default), logging is disabled in release/product builds.
+    /// When `true` (default), [LogLevel.debug] is skipped in release/product builds.
     bool debugGuard = true,
     /// Stack-frame substrings to skip when resolving the caller file name
     /// (e.g. app-level wrappers like `package:my_app/logging/app_logger.dart`).
@@ -78,7 +104,7 @@ class LogLens {
   }) async {
     _debugGuard = debugGuard;
     configureCallerSkipContains(skipCallerContains);
-    final baseStore = store ?? InMemoryLoggerStore();
+    final baseStore = store ?? FileLoggerStore();
     final hasCustomStoreFns = onStoreInit != null ||
         onStoreSaveConfig != null ||
         onStoreLoadConfig != null ||
@@ -138,8 +164,49 @@ class LogLens {
     return await _store?.loadEntries(limit: limit) ?? <LogEntry>[];
   }
 
+  /// Snapshot of persisted logs plus file-store stats when using [FileLoggerStore].
+  static Future<LogStorageInfo> loadStorageInfo({int? limit}) async {
+    await flush();
+    final entries = await loadEntries(limit: limit);
+    final fileStore = _resolveFileStore();
+    if (fileStore == null) {
+      return LogStorageInfo(
+        directoryPath: null,
+        fileCount: 0,
+        totalBytes: 0,
+        entries: entries,
+      );
+    }
+    final stats = await fileStore.storageStats();
+    return LogStorageInfo(
+      directoryPath: fileStore.directoryPath,
+      fileCount: stats.fileCount,
+      totalBytes: stats.totalBytes,
+      entries: entries,
+    );
+  }
+
+  static FileLoggerStore? _resolveFileStore() {
+    final store = _store;
+    if (store is FileLoggerStore) return store;
+    if (store is FunctionLoggerStore && store.fallback is FileLoggerStore) {
+      return store.fallback as FileLoggerStore;
+    }
+    return null;
+  }
+
+  /// Permanently delete all persisted logs via [LoggerStore.clear]
+  /// (for [FileLoggerStore], deletes rolling log files on disk).
   static Future<void> clearEntries() async {
     await _store?.clear();
+  }
+
+  /// Alias of [clearEntries] — deletes persisted log storage, not just the UI buffer.
+  static Future<void> deleteAllLogs() => clearEntries();
+
+  /// Drain pending store writes (e.g. before app pause / kill).
+  static Future<void> flush() async {
+    await _store?.flush();
   }
 
   static void registerLayer(String id, {String? displayName}) {
@@ -180,7 +247,7 @@ class LogLens {
     dynamic error,
     StackTrace? st,
   ]) {
-    if (_debugGuard && kReleaseMode) return;
+    if (_debugGuard && kReleaseMode && level == LogLevel.debug) return;
     if (_config?.shouldShow(moduleId, layerId, level) != true) return;
 
     final file = parseCallerFileName();

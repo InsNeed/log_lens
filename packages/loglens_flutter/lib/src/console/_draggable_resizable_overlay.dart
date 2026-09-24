@@ -286,28 +286,102 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
     });
   }
 
-  Widget _titleBar() {
-    final page = _showSettings ? 'config' : 'stdout';
+  void _openFullScreen() {
+    final navigator = Navigator.of(context);
+    widget.onClose?.call();
+    navigator.push(
+      MaterialPageRoute(builder: (_) => const LogConsolePage()),
+    );
+  }
 
+  Widget _titleBar() {
+    const handleWidth = 52.0;
     return Container(
       height: ConsoleTheme.headerHeight,
       decoration: const BoxDecoration(
         color: ConsoleTheme.titleBar,
         border: Border(bottom: BorderSide(color: ConsoleTheme.border)),
       ),
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          const SizedBox(width: 12),
-          Text('loglens', style: ConsoleTheme.title),
-          Text(' / ', style: ConsoleTheme.subtitle),
-          Text(page, style: ConsoleTheme.subtitle),
-          Expanded(
-            child: MouseRegion(
-              key: _dragZoneKey,
-              cursor: SystemMouseCursors.grab,
+          // Side controls: amplify + clear sit just left of the centered handle;
+          // window chrome stays on the far right.
+          Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 6),
+                      _TitleBarButton(
+                        tooltip: 'Full screen',
+                        icon: Icons.open_in_full,
+                        onTap: _openFullScreen,
+                      ),
+                      _TitleBarButton(
+                        tooltip: 'Clear console',
+                        icon: Icons.clear_all,
+                        onTap: () => _panelController.clear(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: handleWidth),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _TitleBarButton(
+                        tooltip: _showSettings ? 'Back to logs' : 'Settings',
+                        icon: _showSettings ? Icons.terminal : Icons.tune,
+                        active: _showSettings,
+                        onTap: () =>
+                            setState(() => _showSettings = !_showSettings),
+                      ),
+                      _TitleBarButton(
+                        tooltip: 'Minimize',
+                        icon: Icons.remove,
+                        onTap: () {
+                          setState(() => _isMinimized = true);
+                          final size = MediaQuery.of(context).size;
+                          _snapMinimizedToNearestEdgeIfOut(size);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _snapMinimizedToNearestEdgeIfOut(size);
+                            scheduleMicrotask(
+                              () => _snapMinimizedToNearestEdgeIfOut(size),
+                            );
+                          });
+                        },
+                      ),
+                      _TitleBarButton(
+                        tooltip: 'Close',
+                        icon: Icons.close,
+                        danger: true,
+                        onTap: widget.onClose,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Drag handle always pinned to the exact horizontal center.
+          MouseRegion(
+            key: _dragZoneKey,
+            cursor: SystemMouseCursors.grab,
+            child: SizedBox(
+              width: handleWidth,
+              height: ConsoleTheme.headerHeight,
               child: Center(
                 child: Container(
-                  width: 52,
+                  width: handleWidth,
                   height: 5,
                   decoration: BoxDecoration(
                     color: ConsoleTheme.borderStrong,
@@ -317,37 +391,6 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
               ),
             ),
           ),
-          _TitleBarButton(
-            tooltip: 'Clear',
-            icon: Icons.delete_sweep_outlined,
-            onTap: () => _panelController.clear(),
-          ),
-          _TitleBarButton(
-            tooltip: _showSettings ? 'Back to logs' : 'Settings',
-            icon: _showSettings ? Icons.terminal : Icons.tune,
-            active: _showSettings,
-            onTap: () => setState(() => _showSettings = !_showSettings),
-          ),
-          _TitleBarButton(
-            tooltip: 'Minimize',
-            icon: Icons.remove,
-            onTap: () {
-              setState(() => _isMinimized = true);
-              final size = MediaQuery.of(context).size;
-              _snapMinimizedToNearestEdgeIfOut(size);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _snapMinimizedToNearestEdgeIfOut(size);
-                scheduleMicrotask(() => _snapMinimizedToNearestEdgeIfOut(size));
-              });
-            },
-          ),
-          _TitleBarButton(
-            tooltip: 'Close',
-            icon: Icons.close,
-            danger: true,
-            onTap: widget.onClose,
-          ),
-          const SizedBox(width: 6),
         ],
       ),
     );
@@ -603,6 +646,8 @@ class _SettingsPanel extends StatefulWidget {
 }
 
 class _SettingsPanelState extends State<_SettingsPanel> {
+  String? _selectedModuleId;
+
   LoggerConfig? get _config => LogLens.config;
 
   void _toggleModuleAll(String moduleId, bool enabled) {
@@ -649,6 +694,14 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       );
     }
 
+    final selectedId = _selectedModuleId ?? modules.first.id;
+    final selected = modules.firstWhere(
+      (m) => m.id == selectedId,
+      orElse: () => modules.first,
+    );
+    final layers = LoggerRegistry.instance.layers;
+    final moduleEnabled = _config?.isModuleEnabled(selected.id) ?? false;
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: ConsoleTheme.surface,
@@ -657,117 +710,128 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          itemCount: modules.length,
-          separatorBuilder: (_, __) => const Divider(
-            height: 1,
-            color: ConsoleTheme.border,
-          ),
-          itemBuilder: (context, idx) {
-            final module = modules[idx];
-            final enabled = _config?.isModuleEnabled(module.id) ?? false;
-            return _ModuleSection(
-              moduleId: module.id,
-              title: module.displayName,
-              enabled: enabled,
-              onToggleModule: (v) => _toggleModuleAll(module.id, v),
-              layers: LoggerRegistry.instance.layers,
-              config: _config,
-              onToggleLayer: (layerId, v) =>
-                  _toggleModuleLayerAll(module.id, layerId, v),
-              onToggleLevel: (layerId, level, v) =>
-                  _toggleModuleLevel(module.id, layerId, level, v),
-            );
-          },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: modules.map((module) {
+                  final enabled =
+                      _config?.isModuleEnabled(module.id) ?? false;
+                  final selectedChip = module.id == selected.id;
+                  return _ModuleChip(
+                    label: module.displayName,
+                    selected: selectedChip,
+                    enabled: enabled,
+                    onTap: () =>
+                        setState(() => _selectedModuleId = module.id),
+                  );
+                }).toList(),
+              ),
+            ),
+            const Divider(height: 1, color: ConsoleTheme.border),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          selected.displayName,
+                          style: ConsoleTheme.mono.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: ConsoleTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      _TerminalSwitch(
+                        value: moduleEnabled,
+                        onChanged: (v) => _toggleModuleAll(selected.id, v),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ...layers.map((layer) {
+                    final layerEnabled = _config?.isModuleLayerEnabled(
+                          selected.id,
+                          layer.id,
+                        ) ??
+                        false;
+                    return _LayerRow(
+                      title: layer.displayName,
+                      enabled: layerEnabled,
+                      onToggleLayer: (v) =>
+                          _toggleModuleLayerAll(selected.id, layer.id, v),
+                      levels: LogLevel.values,
+                      levelEnabled: (level) =>
+                          _config?.shouldShow(
+                            selected.id,
+                            layer.id,
+                            level,
+                          ) ??
+                          false,
+                      onToggleLevel: (level, v) =>
+                          _toggleModuleLevel(selected.id, layer.id, level, v),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ModuleSection extends StatefulWidget {
-  final String moduleId;
-  final String title;
+class _ModuleChip extends StatelessWidget {
+  final String label;
+  final bool selected;
   final bool enabled;
-  final ValueChanged<bool> onToggleModule;
-  final List<LayerDefinition> layers;
-  final LoggerConfig? config;
-  final void Function(String layerId, bool enabled) onToggleLayer;
-  final void Function(String layerId, LogLevel level, bool enabled)
-      onToggleLevel;
+  final VoidCallback onTap;
 
-  const _ModuleSection({
-    required this.moduleId,
-    required this.title,
+  const _ModuleChip({
+    required this.label,
+    required this.selected,
     required this.enabled,
-    required this.onToggleModule,
-    required this.layers,
-    required this.config,
-    required this.onToggleLayer,
-    required this.onToggleLevel,
+    required this.onTap,
   });
 
   @override
-  State<_ModuleSection> createState() => _ModuleSectionState();
-}
-
-class _ModuleSectionState extends State<_ModuleSection> {
-  bool _expanded = true;
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          hoverColor: ConsoleTheme.selection,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: Row(
-              children: [
-                Icon(
-                  _expanded ? Icons.expand_more : Icons.chevron_right,
-                  size: 16,
-                  color: ConsoleTheme.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: ConsoleTheme.mono.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: ConsoleTheme.textPrimary,
-                    ),
-                  ),
-                ),
-                _TerminalSwitch(
-                  value: widget.enabled,
-                  onChanged: widget.onToggleModule,
-                ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: selected ? ConsoleTheme.selection : ConsoleTheme.surface,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: selected
+                  ? ConsoleTheme.prompt
+                  : ConsoleTheme.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: ConsoleTheme.monoSm.copyWith(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: enabled
+                  ? (selected
+                      ? ConsoleTheme.textPrimary
+                      : ConsoleTheme.textSecondary)
+                  : ConsoleTheme.textMuted,
             ),
           ),
         ),
-        if (_expanded)
-          ...widget.layers.map((layer) {
-            final layerEnabled =
-                widget.config?.isModuleLayerEnabled(widget.moduleId, layer.id) ??
-                    false;
-            return _LayerRow(
-              title: layer.displayName,
-              enabled: layerEnabled,
-              onToggleLayer: (v) => widget.onToggleLayer(layer.id, v),
-              levels: LogLevel.values,
-              levelEnabled: (level) =>
-                  widget.config?.shouldShow(widget.moduleId, layer.id, level) ??
-                  false,
-              onToggleLevel: (level, v) =>
-                  widget.onToggleLevel(layer.id, level, v),
-            );
-          }),
-      ],
+      ),
     );
   }
 }
@@ -792,8 +856,8 @@ class _LayerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(left: 18, right: 10, bottom: 6),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       decoration: BoxDecoration(
         color: ConsoleTheme.shell,
         borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
@@ -804,11 +868,6 @@ class _LayerRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                '└',
-                style: ConsoleTheme.monoSm.copyWith(color: ConsoleTheme.textMuted),
-              ),
-              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   title,
@@ -821,7 +880,7 @@ class _LayerRow extends StatelessWidget {
               _TerminalSwitch(value: enabled, onChanged: onToggleLayer),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 6,
             runSpacing: 6,

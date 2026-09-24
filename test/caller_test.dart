@@ -80,6 +80,7 @@ void main() {
         () async {
       LogEntry? captured;
       await LogLens.init(
+        store: InMemoryLoggerStore(),
         debugGuard: false,
         defaultModules: _Mod.values,
         defaultLayers: _Layer.values,
@@ -95,7 +96,20 @@ void main() {
     });
 
     test('debugGuard flag is stored during init', () async {
-      await LogLens.init(debugGuard: true);
+      await LogLens.init(store: InMemoryLoggerStore(), debugGuard: true);
+      expect(LogLens.debugGuard, isTrue);
+    });
+
+    test('debugGuard docs: when true, only debug is stripped in release',
+        () async {
+      // Runtime tests run in non-product mode, so the release branch is not
+      // hit here; the flag still gates LogLevel.debug via kReleaseMode.
+      await LogLens.init(
+        store: InMemoryLoggerStore(),
+        debugGuard: true,
+        defaultModules: _Mod.values,
+        defaultLayers: _Layer.values,
+      );
       expect(LogLens.debugGuard, isTrue);
     });
   });

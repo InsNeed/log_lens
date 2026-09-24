@@ -31,6 +31,28 @@ class LoggerConfig {
     }
   }
 
+  /// Enable/disable every module × layer × level.
+  void setAll(bool enabled) {
+    for (final m in LoggerRegistry.instance.modules) {
+      setModuleAll(m.id, enabled);
+    }
+  }
+
+  /// True when every registered module/layer/level is enabled.
+  bool get isAllEnabled {
+    final modules = LoggerRegistry.instance.modules;
+    final layers = LoggerRegistry.instance.layers;
+    if (modules.isEmpty || layers.isEmpty) return false;
+    for (final m in modules) {
+      for (final l in layers) {
+        for (final level in LogLevel.values) {
+          if (_matrix[m.id]?[l.id]?[level] != true) return false;
+        }
+      }
+    }
+    return true;
+  }
+
   /// Enable/disable single [level] for all layers under a module
   void setModuleLevel(String moduleId, LogLevel level, bool enabled) {
     for (final l in LoggerRegistry.instance.layers) {

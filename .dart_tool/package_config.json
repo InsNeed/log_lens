@@ -303,8 +303,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.11.4",
+  "generatorVersion": "3.12.2",
   "flutterRoot": "file:///Users/inneed/development/flutter",
-  "flutterVersion": "3.41.6",
+  "flutterVersion": "3.44.2",
   "pubCache": "file:///Users/inneed/.pub-cache"
 }

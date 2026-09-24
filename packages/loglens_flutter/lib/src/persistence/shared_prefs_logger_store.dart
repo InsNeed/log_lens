@@ -83,6 +83,20 @@ class SharedPrefsLoggerStore implements LoggerStore {
     return _writeQueue;
   }
 
+  @override
+  Future<void> flush() async {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    if (_cacheLoaded) {
+      _flushNow();
+    }
+    await _writeQueue;
+    final pending = _pendingFlushCompleter;
+    if (pending != null) {
+      await pending.future;
+    }
+  }
+
   void _scheduleFlush() {
     _flushTimer?.cancel();
     _flushTimer = Timer(_flushDelay, _flushNow);

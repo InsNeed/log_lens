@@ -1,6 +1,6 @@
 name: loglens_flutter
-description: Flutter UI and SharedPreferences persistence for LogLens.
-version: 0.5.0
+description: Flutter UI, documents-dir file persistence, and optional SharedPreferences store for LogLens.
+version: 0.6.0
 publish_to: none
 
 environment:
@@ -13,6 +13,7 @@ dependencies:
   loglens:
     path: ../../
   shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_lints: ^3.0.0

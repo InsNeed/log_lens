@@ -1,106 +1,111 @@
 # loglens
 
-A modular, embeddable **pure Dart** logging toolkit. Optional Flutter UI lives in the companion package [`loglens_flutter`](packages/loglens_flutter).
+A modular, embeddable **pure Dart** logging toolkit. Optional Flutter UI lives in [`loglens_flutter`](packages/loglens_flutter).
 
 ## Features
 
 - Dynamic module/layer registry with per-level switches
-- Realtime stream + pluggable persistence (`InMemoryLoggerStore`, `FileLoggerStore`)
+- Realtime stream + **default file persistence** (`FileLoggerStore`; optional `InMemoryLoggerStore` / `SharedPrefsLoggerStore`)
 - Automatic caller file name from `StackTrace`
-- Release-mode guard (`debugGuard`, on by default)
+- Release-mode guard (`debugGuard`: strips `debug` only in product builds)
 - Static API; enum-based module/layer ids
 
 ## Install
 
 ```yaml
 dependencies:
-  loglens: ^0.5.0
+  loglens: ^0.6.0
 ```
 
-For Flutter console UI and `SharedPreferences` storage:
+Flutter (console UI + documents-dir file store):
 
 ```yaml
 dependencies:
-  loglens: ^0.5.0
-  loglens_flutter: ^0.5.0
+  loglens: ^0.6.0
+  loglens_flutter: ^0.6.0
 ```
 
-## Quick Start
+## Usage
 
-```dart
-enum LogModules { auth, pay }
-enum LogLayers { ui, dataSource }
+### 1. Init
 
-await LogLens.init(
-  defaultModules: LogModules.values,
-  defaultLayers: LogLayers.values,
-  // debugGuard: true, // default — no logging in release/product builds
-);
-
-LogLens.i('User pressed login', LogModules.auth, LogLayers.ui);
-LogLens.e('Login failed', LogModules.auth, LogLayers.dataSource);
-```
-
-File names are resolved automatically from the call stack — no manual `file` argument.
-
-## Release Guard
-
-By default, logging is disabled when compiled with `dart.vm.product` (release/product builds):
-
-```dart
-await LogLens.init(debugGuard: false); // allow logging in release
-```
-
-Pure Dart equivalent of Flutter's `kDebugMode` guard:
-
-```dart
-import 'package:loglens/loglens.dart';
-
-if (kDebugMode) { /* ... */ }
-```
-
-## Flutter UI
+**Flutter (recommended)**
 
 ```dart
 import 'package:loglens/loglens.dart';
 import 'package:loglens_flutter/loglens_flutter.dart';
 
-await LogLens.init(store: SharedPrefsLoggerStore());
-
-FloatingLogConsoleController().toggle(context);
-Navigator.of(context).push(
-  MaterialPageRoute(builder: (_) => const LogConsolePage()),
+await LogLensFlutter.init(
+  defaultModules: LogModules.values, // or LoggerDefaultModule.values
+  defaultLayers: LoggerDefaultLayer.values,
 );
+runApp(const LogLensLifecycleFlusher(child: MyApp()));
 ```
 
-## Skipping wrapper frames
+Logs go under the app documents dir at `…/loglens`. `LogLensLifecycleFlusher` calls `flush()` on pause/detach.
 
-If you wrap `LogLens` behind an app logger, pass substrings of those frames so
-the displayed file is the real call site:
+**Pure Dart**
 
 ```dart
 await LogLens.init(
-  skipCallerContains: const [
-    'package:my_app/core/logging/app_logger.dart',
-  ],
+  defaultModules: LogModules.values,
+  defaultLayers: LoggerDefaultLayer.values,
 );
 ```
 
-## API Highlights
+Optional: `debugGuard: false` to allow debug in release; pass `skipCallerContains` if you wrap LogLens.
 
-- `LogLens.init({ LoggerStore? store, bool debugGuard = true, Iterable<String> skipCallerContains = const [], ... })`
-- `LogLens.d/i/w/e(dynamic message, Enum module, Enum layer, [error, stackTrace])`
-- `parseCallerFileName([StackTrace?])` / `configureCallerSkipContains` — utilities for custom integrations
+### 2. Call
 
-## Persistence
+`LogLens.d/i/w/e(message, module, layer)`; `e` may take `error, stackTrace`. File name comes from the stack.
 
-| Store | Package | Notes |
-|-------|---------|-------|
-| `InMemoryLoggerStore` | `loglens` | Default |
-| `FileLoggerStore` | `loglens` | Rolling NDJSON files (`dart:io`) |
-| `SharedPrefsLoggerStore` | `loglens_flutter` | Flutter apps |
+```dart
+LogLens.i('login tapped', LogModules.auth, LoggerDefaultLayer.ui);
+LogLens.e('login failed', LogModules.auth, LoggerDefaultLayer.dataSource, err, st);
+```
 
-Implement `LoggerStore` or use init callbacks for custom backends.
+### 3. Read
+
+```dart
+final entries = await LogLens.loadEntries(limit: 500);
+final info = await LogLens.loadStorageInfo(limit: 500); // path + size
+LogLens.stream.listen((e) { /* live */ });
+
+FloatingLogConsoleController().toggle(context);
+// or Navigator.push → LogConsolePage()
+```
+
+### 4. Delete files
+
+Console **Clear** only clears the UI buffer. To wipe disk:
+
+```dart
+await LogLens.deleteAllLogs();
+```
+
+### Module / Layer
+
+Use concrete feature domains for `module` (`auth`, `pay`, …) — avoid vague names like `app` / `common` / `util`. Prefer `LoggerDefaultModule` (`auth`, `pay`, `user`, `profile`) or a custom enum that follows the same rule. Use `LoggerDefaultLayer` for layers.
+
+## Release Guard
+
+With `debugGuard: true` (default), product builds skip only `debug`. `info` / `warning` / `error` still log and persist. Pass `debugGuard: false` to allow debug in release.
+
+## API
+
+- `LogLens.init` / `LogLensFlutter.init` — Flutter default: documents-dir `FileLoggerStore`
+- `LogLens.d/i/w/e` · `flush` · `loadEntries` · `loadStorageInfo` · `deleteAllLogs`
+- Stores: `FileLoggerStore` (default) · `InMemoryLoggerStore` · `SharedPrefsLoggerStore` (optional)
+
+## Skill
+
+For Cursor (or other agents), add the project skill so the agent wires LogLens correctly (init, modules/layers, flush, clear vs delete).
+
+1. Copy [`SKILL.md`](SKILL.md) into your project, e.g. `.cursor/skills/loglens/SKILL.md`.
+2. Or point the agent at this repo’s `SKILL.md` when integrating logging.
+3. Ask the agent to “add LogLens” / “instrument with LogLens” — it should follow the skill (Flutter `LogLensFlutter.init` + `LogLensLifecycleFlusher`, concrete module names, UI clear ≠ disk delete).
+
+See [`SKILL.md`](SKILL.md) for the full rules.
 
 ## License
 

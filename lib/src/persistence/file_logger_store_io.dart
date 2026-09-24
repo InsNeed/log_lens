@@ -29,15 +29,32 @@ class FileLoggerStore implements LoggerStore {
 
   FileLoggerStore({
     Directory? baseDirectory,
-    int maxFileBytes = 1024 * 1024 * 2,
-    int maxFiles = 5,
-    Duration flushDelay = const Duration(milliseconds: 400),
-  })  : _baseDirectory = baseDirectory,
+    String? basePath,
+    int maxFileBytes = 1024 * 1024 * 5,
+    int maxFiles = 10,
+    Duration flushDelay = const Duration(milliseconds: 100),
+  })  : _baseDirectory = baseDirectory ??
+            (basePath != null ? Directory(basePath) : null),
         _maxFileBytes = maxFileBytes,
         _maxFiles = maxFiles,
         _flushDelay = flushDelay;
 
   File get _configFile => File('${_dir!.path}/$_configFileName');
+
+  /// Absolute path of the `loglens` store directory after [init], else `null`.
+  String? get directoryPath => _dir?.path;
+
+  /// Counts rolling log files and their total size on disk.
+  Future<LogFileStorageStats> storageStats() async {
+    final files = await _listLogFilesSortedNewest();
+    int total = 0;
+    for (final f in files) {
+      try {
+        total += await f.length();
+      } catch (_) {}
+    }
+    return LogFileStorageStats(fileCount: files.length, totalBytes: total);
+  }
 
   @override
   Future<void> init() async {
@@ -100,17 +117,40 @@ class FileLoggerStore implements LoggerStore {
 
   @override
   Future<void> clear() async {
-    await _sink?.flush();
-    await _sink?.close();
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    // Drain queued writes before deleting so a late append cannot recreate data.
+    await _writeQueue;
+    try {
+      await _sink?.flush();
+    } catch (_) {}
+    try {
+      await _sink?.close();
+    } catch (_) {}
     _sink = null;
+    _currentFile = null;
+    _tailCache.clear();
+
     final files = await _listLogFilesSortedNewest();
     for (final f in files) {
       try {
         await f.delete();
       } catch (_) {}
     }
-    _currentFile = await _ensureCurrentFile();
+
+    _currentFile = await _createNewFile();
     _sink = _currentFile!.openWrite(mode: FileMode.append);
+    _writeQueue = Future.value();
+  }
+
+  @override
+  Future<void> flush() async {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    await _writeQueue;
+    try {
+      await _sink?.flush();
+    } catch (_) {}
   }
 
   void _scheduleFlush() {

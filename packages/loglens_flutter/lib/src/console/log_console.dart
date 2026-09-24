@@ -9,11 +9,27 @@ import 'console_theme.dart';
 class LogConsolePanelController {
   VoidCallback? _clear;
   void _bindClear(VoidCallback fn) => _clear = fn;
+
+  /// Clears the in-memory console buffer only (does not delete persisted files).
   void clear() => _clear?.call();
 }
 
-class LogConsolePage extends StatelessWidget {
+class LogConsolePage extends StatefulWidget {
   const LogConsolePage({super.key});
+
+  @override
+  State<LogConsolePage> createState() => _LogConsolePageState();
+}
+
+class _LogConsolePageState extends State<LogConsolePage> {
+  final LogConsolePanelController _controller = LogConsolePanelController();
+  final FocusNode _filterFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _filterFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,10 +40,26 @@ class LogConsolePage extends StatelessWidget {
         foregroundColor: ConsoleTheme.textPrimary,
         elevation: 0,
         title: Text('loglens', style: ConsoleTheme.title),
+        actions: [
+          IconButton(
+            tooltip: 'Focus filter',
+            icon: const Icon(Icons.filter_alt_outlined, size: 20),
+            onPressed: () => _filterFocus.requestFocus(),
+          ),
+          IconButton(
+            tooltip: 'Clear console',
+            icon: const Icon(Icons.clear_all, size: 20),
+            onPressed: () => _controller.clear(),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
-      body: const Padding(
-        padding: EdgeInsets.all(12),
-        child: LogConsolePanel(),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: LogConsolePanel(
+          controller: _controller,
+          filterFocusNode: _filterFocus,
+        ),
       ),
     );
   }
@@ -36,11 +68,13 @@ class LogConsolePage extends StatelessWidget {
 class LogConsolePanel extends StatefulWidget {
   final LogConsolePanelController? controller;
   final bool compact;
+  final FocusNode? filterFocusNode;
 
   const LogConsolePanel({
     super.key,
     this.controller,
     this.compact = false,
+    this.filterFocusNode,
   });
 
   @override
@@ -49,32 +83,32 @@ class LogConsolePanel extends StatefulWidget {
 
 class _LogConsolePanelState extends State<LogConsolePanel> {
   final List<LogEntry> _buffer = <LogEntry>[];
-  static const int _maxBuffer = 500;
+  static const int _maxBuffer = 1000;
   StreamSubscription<LogEntry>? _subscription;
   late final Future<void> _initialLoadFuture;
+  bool _hydrating = true;
+  final List<LogEntry> _liveDuringLoad = <LogEntry>[];
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String _query = '';
   bool _showScrollFab = false;
   bool _caseSensitive = false;
+  /// UI-only: hide list without stopping LogLens writes / stream.
+  bool _displayEnabled = true;
 
   @override
   void initState() {
     super.initState();
-    widget.controller?._bindClear(() async {
-      await LogLens.clearEntries();
-      if (!mounted) return;
+    widget.controller?._bindClear(() {
       setState(() => _buffer.clear());
     });
-    _initialLoadFuture = () async {
-      final persisted = await LogLens.loadEntries(limit: _maxBuffer);
-      _buffer
-        ..clear()
-        ..addAll(persisted);
-    }();
     _subscription = LogLens.stream.listen((e) {
       if (!mounted) return;
+      if (_hydrating) {
+        _liveDuringLoad.add(e);
+        return;
+      }
       setState(() {
         _buffer.add(e);
         if (_buffer.length > _maxBuffer) {
@@ -82,7 +116,49 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
         }
       });
     });
+    _initialLoadFuture = () async {
+      final persisted = await LogLens.loadEntries(limit: _maxBuffer);
+      if (!mounted) return;
+      setState(() {
+        final merged = _mergeHistoryAndLive(persisted, _liveDuringLoad);
+        _liveDuringLoad.clear();
+        _hydrating = false;
+        _buffer
+          ..clear()
+          ..addAll(merged);
+        while (_buffer.length > _maxBuffer) {
+          _buffer.removeAt(0);
+        }
+      });
+    }();
     _scrollController.addListener(_onScrollChange);
+  }
+
+  /// Prefer persisted history, then append live entries not already present.
+  static List<LogEntry> _mergeHistoryAndLive(
+    List<LogEntry> persisted,
+    List<LogEntry> live,
+  ) {
+    final out = List<LogEntry>.from(persisted);
+    for (final e in live) {
+      if (!_containsEntry(out, e)) {
+        out.add(e);
+      }
+    }
+    return out;
+  }
+
+  static bool _containsEntry(List<LogEntry> list, LogEntry e) {
+    for (final p in list) {
+      if (p.timestamp == e.timestamp &&
+          p.level == e.level &&
+          p.moduleId == e.moduleId &&
+          p.layerId == e.layerId &&
+          p.message?.toString() == e.message?.toString()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _onScrollChange() {
@@ -120,6 +196,19 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
     }).toList(growable: false);
   }
 
+  void _toggleDisplay() {
+    setState(() => _displayEnabled = !_displayEnabled);
+  }
+
+  void _copyAllLogs() {
+    if (_buffer.isEmpty) {
+      Clipboard.setData(const ClipboardData(text: ''));
+      return;
+    }
+    final text = _buffer.map(formatLogEntryText).join('\n');
+    Clipboard.setData(ClipboardData(text: text));
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = widget.compact;
@@ -129,16 +218,21 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
         _FilterBar(
           compact: compact,
           controller: _searchController,
+          focusNode: widget.filterFocusNode,
           caseSensitive: _caseSensitive,
           hasQuery: _query.isNotEmpty,
+          displayEnabled: _displayEnabled,
+          showClear: !compact,
           onChanged: (v) => setState(() => _query = v),
-          onClear: () {
+          onClearFilter: () {
             setState(() {
               _query = '';
               _searchController.clear();
             });
           },
           onToggleCase: () => setState(() => _caseSensitive = !_caseSensitive),
+          onToggleDisplay: _toggleDisplay,
+          onClearConsole: () => widget.controller?.clear(),
         ),
         SizedBox(height: compact ? 6 : 8),
         Expanded(
@@ -165,6 +259,16 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
                           ),
                         );
                       }
+                      if (!_displayEnabled) {
+                        return Center(
+                          child: Text(
+                            '— display paused —',
+                            style: ConsoleTheme.monoSm.copyWith(
+                              color: ConsoleTheme.textMuted,
+                            ),
+                          ),
+                        );
+                      }
                       final entries = _applyFilter(_buffer);
                       return LogList(
                         entries: entries,
@@ -175,11 +279,22 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
                   ),
                 ),
               ),
-              if (_showScrollFab)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: _MiniIconButton(
+                  tooltip: 'Copy all logs',
+                  icon: Icons.copy_outlined,
+                  onPressed: _copyAllLogs,
+                ),
+              ),
+              if (_displayEnabled && _showScrollFab)
                 Positioned(
                   right: 8,
                   bottom: 8,
-                  child: _ScrollTailButton(
+                  child: _MiniIconButton(
+                    tooltip: 'Scroll to latest',
+                    icon: Icons.south,
                     onPressed: () {
                       if (!_scrollController.hasClients) return;
                       _scrollController.jumpTo(
@@ -199,20 +314,30 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
 class _FilterBar extends StatelessWidget {
   final bool compact;
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final bool caseSensitive;
   final bool hasQuery;
+  final bool displayEnabled;
+  final bool showClear;
   final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
+  final VoidCallback onClearFilter;
   final VoidCallback onToggleCase;
+  final VoidCallback onToggleDisplay;
+  final VoidCallback? onClearConsole;
 
   const _FilterBar({
     required this.compact,
     required this.controller,
+    this.focusNode,
     required this.caseSensitive,
     required this.hasQuery,
+    required this.displayEnabled,
+    required this.showClear,
     required this.onChanged,
-    required this.onClear,
+    required this.onClearFilter,
     required this.onToggleCase,
+    required this.onToggleDisplay,
+    this.onClearConsole,
   });
 
   @override
@@ -241,6 +366,7 @@ class _FilterBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
               style: ConsoleTheme.monoSm.copyWith(color: ConsoleTheme.textPrimary),
               decoration: InputDecoration(
                 isDense: true,
@@ -257,8 +383,8 @@ class _FilterBar extends StatelessWidget {
           if (hasQuery)
             _FilterIconButton(
               icon: Icons.close,
-              tooltip: 'Clear',
-              onTap: onClear,
+              tooltip: 'Clear filter',
+              onTap: onClearFilter,
             ),
           _FilterIconButton(
             icon: Icons.text_fields,
@@ -266,6 +392,20 @@ class _FilterBar extends StatelessWidget {
             active: caseSensitive,
             onTap: onToggleCase,
           ),
+          _FilterIconButton(
+            icon: displayEnabled
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+            tooltip: displayEnabled ? 'Hide log list' : 'Show log list',
+            active: displayEnabled,
+            onTap: onToggleDisplay,
+          ),
+          if (showClear && onClearConsole != null)
+            _FilterIconButton(
+              icon: Icons.clear_all,
+              tooltip: 'Clear console',
+              onTap: onClearConsole!,
+            ),
         ],
       ),
     );
@@ -305,10 +445,16 @@ class _FilterIconButton extends StatelessWidget {
   }
 }
 
-class _ScrollTailButton extends StatelessWidget {
+class _MiniIconButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
   final VoidCallback onPressed;
 
-  const _ScrollTailButton({required this.onPressed});
+  const _MiniIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -320,22 +466,34 @@ class _ScrollTailButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
-            border: Border.all(color: ConsoleTheme.border),
-          ),
-          child: const Icon(
-            Icons.south,
-            size: 14,
-            color: ConsoleTheme.textSecondary,
+        child: Tooltip(
+          message: tooltip,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(ConsoleTheme.radiusSm),
+              border: Border.all(color: ConsoleTheme.border),
+            ),
+            child: Icon(
+              icon,
+              size: 14,
+              color: ConsoleTheme.textSecondary,
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+String formatLogEntryText(LogEntry entry) {
+  final time = entry.timestamp.toIso8601String().substring(11, 19);
+  final level = ConsoleTheme.levelLabel(entry.level);
+  final header =
+      '[$time] $level ${entry.moduleId}/${entry.layerId} ${entry.fileName}: ${entry.message}';
+  if (entry.error == null && entry.stackTrace == null) return header;
+  return '$header\n  Error: ${entry.error ?? ''}\n  ${entry.stackTrace ?? ''}';
 }
 
 class LogList extends StatelessWidget {
@@ -381,15 +539,6 @@ class LogListItem extends StatelessWidget {
 
   const LogListItem({super.key, required this.entry, this.compact = false});
 
-  String _fullText() {
-    final time = entry.timestamp.toIso8601String().substring(11, 19);
-    final level = ConsoleTheme.levelLabel(entry.level);
-    final header =
-        '[$time] $level ${entry.moduleId}/${entry.layerId} ${entry.fileName}: ${entry.message}';
-    if (entry.error == null && entry.stackTrace == null) return header;
-    return '$header\n  Error: ${entry.error ?? ''}\n  ${entry.stackTrace ?? ''}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final time = entry.timestamp.toIso8601String().substring(11, 19);
@@ -405,7 +554,7 @@ class LogListItem extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => Clipboard.setData(ClipboardData(text: _fullText())),
+        onTap: () => Clipboard.setData(ClipboardData(text: formatLogEntryText(entry))),
         hoverColor: ConsoleTheme.selection,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

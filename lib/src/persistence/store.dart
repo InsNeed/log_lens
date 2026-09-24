@@ -14,10 +14,15 @@ abstract class LoggerStore {
 
   Future<void> append(LogEntry entry);
   Future<List<LogEntry>> loadEntries({int? limit});
+
+  /// Permanently delete all persisted log entries (e.g. log files on disk).
   Future<void> clear();
+
+  /// Drain pending writes and persist to durable storage.
+  Future<void> flush();
 }
 
-/// Default in-memory store for pure Dart usage.
+/// Default in-memory store (tests / ephemeral use).
 class InMemoryLoggerStore implements LoggerStore {
   LoggerConfig? _config;
   final List<LogEntry> _entries = <LogEntry>[];
@@ -50,6 +55,9 @@ class InMemoryLoggerStore implements LoggerStore {
   Future<void> clear() async {
     _entries.clear();
   }
+
+  @override
+  Future<void> flush() async {}
 }
 
 /// Function-based adapter for [LoggerStore].
@@ -60,6 +68,7 @@ class FunctionLoggerStore implements LoggerStore {
   final Future<void> Function(LogEntry entry)? _onAppend;
   final Future<List<LogEntry>> Function({int? limit})? _onLoadEntries;
   final Future<void> Function()? _onClear;
+  final Future<void> Function()? _onFlush;
 
   final LoggerStore fallback;
 
@@ -70,6 +79,7 @@ class FunctionLoggerStore implements LoggerStore {
     Future<void> Function(LogEntry entry)? onAppend,
     Future<List<LogEntry>> Function({int? limit})? onLoadEntries,
     Future<void> Function()? onClear,
+    Future<void> Function()? onFlush,
     LoggerStore? fallback,
   })  : _onInit = onInit,
         _onSaveConfig = onSaveConfig,
@@ -77,6 +87,7 @@ class FunctionLoggerStore implements LoggerStore {
         _onAppend = onAppend,
         _onLoadEntries = onLoadEntries,
         _onClear = onClear,
+        _onFlush = onFlush,
         fallback = fallback ?? InMemoryLoggerStore();
 
   @override
@@ -125,5 +136,13 @@ class FunctionLoggerStore implements LoggerStore {
       return _onClear!.call();
     }
     return fallback.clear();
+  }
+
+  @override
+  Future<void> flush() async {
+    if (_onFlush != null) {
+      return _onFlush!.call();
+    }
+    return fallback.flush();
   }
 }
