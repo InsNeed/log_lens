@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../config.dart';
 import '../logger.dart';
-import 'entry_codec.dart';
 
 export 'file_logger_store_stub.dart'
     if (dart.library.io) 'file_logger_store_io.dart';

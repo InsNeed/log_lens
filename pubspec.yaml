@@ -1,5 +1,5 @@
 name: loglens
-description: A flexible, extensible logging utility with dynamic modules/layers, persistence, and a simple console UI.
+description: Modular Dart logging with modules/layers, stream API, and file persistence. Flutter UI in loglens_flutter.
 version: 0.6.0
 
 homepage: https://github.com/InsNeed/log_lens

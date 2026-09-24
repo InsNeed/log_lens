@@ -1,0 +1,42 @@
+# Keep the published package lean (pure Dart core only).
+
+# Flutter template leftovers at repo root
+android/
+windows/
+ios/
+macos/
+linux/
+web/
+
+# Companion Flutter package (publish_to: none; not part of loglens)
+packages/
+
+# Huge demos / junk
+screenshot/
+t.txt
+
+# Example platforms (keep example/lib + pubspec for docs)
+example/android/
+example/macos/
+example/ios/
+example/windows/
+example/linux/
+example/web/
+example/build/
+example/**/Podfile*
+example/**/*.iml
+example/pubspec.lock
+
+# Tooling / IDE
+.dart_tool/
+.idea/
+.vscode/
+*.iml
+.metadata
+devtools_options.yaml
+.DS_Store
+
+# Build artifacts
+**/build/
+**/local.properties
+**/.flutter-plugins*
