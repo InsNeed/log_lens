@@ -1,6 +1,6 @@
 name: loglens_flutter
 description: Flutter UI for LogLens - in-app log console, floating overlay, documents-dir file persistence, and optional SharedPreferences store.
-version: 0.6.0
+version: 0.6.1
 
 homepage: https://github.com/InsNeed/log_lens
 repository: https://github.com/InsNeed/log_lens/tree/main/packages/loglens_flutter
@@ -17,7 +17,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  loglens: ^0.6.0
+  loglens: ^0.6.1
   shared_preferences: ^2.2.2
   path_provider: ^2.1.2
 

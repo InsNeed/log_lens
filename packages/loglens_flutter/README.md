@@ -51,6 +51,13 @@ controller.toggle(context);
 const FloatingLogConsoleButton();
 ```
 
+If `MaterialApp.builder` wraps the app in its own `Overlay` (toast hosts etc.), pass your root navigator key so the overlay and full-screen route attach to the app's Navigator:
+
+```dart
+final controller = FloatingLogConsoleController(navigatorKey: rootNavigatorKey);
+controller.toggle(context, showSettings: true); // open on the settings page
+```
+
 Embed the panel anywhere:
 
 ```dart

@@ -112,4 +112,54 @@ void main() {
     expect(stats.fileCount, 1);
     expect(stats.totalBytes, 0);
   });
+
+  LogEntry entryAt(int i) => LogEntry(
+        timestamp: DateTime.utc(2026, 1, 1).add(Duration(milliseconds: i)),
+        level: LogLevel.info,
+        moduleId: 'app',
+        layerId: 'ui',
+        fileName: 'test.dart',
+        message: 'message $i ${'x' * 60}',
+      );
+
+  test('loadEntries tails a log file larger than 64KB', () async {
+    final store = FileLoggerStore(
+      basePath: tempDir.path,
+      flushDelay: Duration.zero,
+    );
+    await store.init();
+    for (var i = 0; i < 2000; i++) {
+      await store.append(entryAt(i));
+    }
+    await store.flush();
+    expect((await store.storageStats()).totalBytes, greaterThan(64 * 1024));
+
+    final loaded = await store.loadEntries(limit: 1000);
+    expect(loaded, hasLength(1000));
+    expect(loaded.first.message, startsWith('message 1000 '));
+    expect(loaded.last.message, startsWith('message 1999 '));
+  });
+
+  test('loadEntries skips torn lines', () async {
+    final store = FileLoggerStore(
+      basePath: tempDir.path,
+      flushDelay: Duration.zero,
+    );
+    await store.init();
+    await store.append(entryAt(0));
+    await store.flush();
+    final logFile = Directory('${tempDir.path}/loglens')
+        .listSync()
+        .whereType<File>()
+        .firstWhere((f) => f.path.endsWith('.log'));
+    await logFile.writeAsString('{"ts":1,"lvl":"in\n', mode: FileMode.append);
+    await store.append(entryAt(1));
+    await store.flush();
+
+    final loaded = await store.loadEntries();
+    expect(loaded.map((e) => e.message), [
+      startsWith('message 0 '),
+      startsWith('message 1 '),
+    ]);
+  });
 }

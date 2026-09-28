@@ -15,10 +15,17 @@ class DraggableResizableOverlay extends StatefulWidget {
   final Rect? initialRect;
   final VoidCallback? onClose;
 
+  /// Used for the full-screen route; an overlay above the app's Navigator
+  /// cannot find one from its own context.
+  final NavigatorState? navigator;
+  final bool initialShowSettings;
+
   const DraggableResizableOverlay({
     required this.child,
     this.initialRect,
     this.onClose,
+    this.navigator,
+    this.initialShowSettings = false,
   });
 
   @override
@@ -29,7 +36,7 @@ class DraggableResizableOverlay extends StatefulWidget {
 class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
   late Rect _rect;
   bool _isMinimized = false;
-  bool _showSettings = false;
+  late bool _showSettings = widget.initialShowSettings;
 
   static const Size _minSize = Size(280, 180);
   static const double _desktopHitPad = 8;
@@ -287,7 +294,11 @@ class _DraggableResizableOverlayState extends State<DraggableResizableOverlay> {
   }
 
   void _openFullScreen() {
-    final navigator = Navigator.of(context);
+    final captured = widget.navigator;
+    final navigator = captured != null && captured.mounted
+        ? captured
+        : Navigator.maybeOf(context, rootNavigator: true);
+    if (navigator == null) return;
     widget.onClose?.call();
     navigator.push(
       MaterialPageRoute(builder: (_) => const LogConsolePage()),

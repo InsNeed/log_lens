@@ -117,7 +117,13 @@ class _LogConsolePanelState extends State<LogConsolePanel> {
       });
     });
     _initialLoadFuture = () async {
-      final persisted = await LogLens.loadEntries(limit: _maxBuffer);
+      List<LogEntry> persisted;
+      try {
+        persisted = await LogLens.loadEntries(limit: _maxBuffer);
+      } catch (_) {
+        // History is best-effort; live entries must still show.
+        persisted = <LogEntry>[];
+      }
       if (!mounted) return;
       setState(() {
         final merged = _mergeHistoryAndLive(persisted, _liveDuringLoad);

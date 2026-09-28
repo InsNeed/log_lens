@@ -87,12 +87,18 @@ class FileLoggerStore implements LoggerStore {
     if (_tailCache.length > _tailCacheLimit) {
       _tailCache.removeAt(0);
     }
-    _writeQueue = _writeQueue.then((_) async {
+    return _enqueue(() async {
       await _rotateIfNeeded(extraBytes: encoded.length + 1);
       _sink ??= _currentFile!.openWrite(mode: FileMode.append);
       _sink!.writeln(encoded);
       _scheduleFlush();
     });
+  }
+
+  /// Serializes all sink access (an [IOSink] rejects writes while flushing).
+  /// A failed operation must not wedge the queue for later writes.
+  Future<void> _enqueue(Future<void> Function() op) {
+    _writeQueue = _writeQueue.then((_) => op()).catchError((Object _) {});
     return _writeQueue;
   }
 
@@ -112,42 +118,52 @@ class FileLoggerStore implements LoggerStore {
     if (limit != null && lines.length > limit) {
       lines.removeRange(0, lines.length - limit);
     }
-    return lines.map(decodeLogEntry).toList(growable: false);
-  }
-
-  @override
-  Future<void> clear() async {
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    // Drain queued writes before deleting so a late append cannot recreate data.
-    await _writeQueue;
-    try {
-      await _sink?.flush();
-    } catch (_) {}
-    try {
-      await _sink?.close();
-    } catch (_) {}
-    _sink = null;
-    _currentFile = null;
-    _tailCache.clear();
-
-    final files = await _listLogFilesSortedNewest();
-    for (final f in files) {
+    final entries = <LogEntry>[];
+    for (final line in lines) {
+      // Skip lines torn by a crash or a write still in flight.
       try {
-        await f.delete();
+        entries.add(decodeLogEntry(line));
       } catch (_) {}
     }
-
-    _currentFile = await _createNewFile();
-    _sink = _currentFile!.openWrite(mode: FileMode.append);
-    _writeQueue = Future.value();
+    return entries;
   }
 
   @override
-  Future<void> flush() async {
+  Future<void> clear() {
     _flushTimer?.cancel();
     _flushTimer = null;
-    await _writeQueue;
+    _tailCache.clear();
+    // Queued so earlier appends land first and later ones go to the new file.
+    return _enqueue(() async {
+      try {
+        await _sink?.flush();
+      } catch (_) {}
+      try {
+        await _sink?.close();
+      } catch (_) {}
+      _sink = null;
+      _currentFile = null;
+
+      final files = await _listLogFilesSortedNewest();
+      for (final f in files) {
+        try {
+          await f.delete();
+        } catch (_) {}
+      }
+
+      _currentFile = await _createNewFile();
+      _sink = _currentFile!.openWrite(mode: FileMode.append);
+    });
+  }
+
+  @override
+  Future<void> flush() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    return _enqueue(_flushSink);
+  }
+
+  Future<void> _flushSink() async {
     try {
       await _sink?.flush();
     } catch (_) {}
@@ -155,11 +171,7 @@ class FileLoggerStore implements LoggerStore {
 
   void _scheduleFlush() {
     _flushTimer?.cancel();
-    _flushTimer = Timer(_flushDelay, () async {
-      try {
-        await _sink?.flush();
-      } catch (_) {}
-    });
+    _flushTimer = Timer(_flushDelay, () => _enqueue(_flushSink));
   }
 
   Future<void> _rotateIfNeeded({int extraBytes = 0}) async {
@@ -211,22 +223,28 @@ class FileLoggerStore implements LoggerStore {
 
   Future<List<String>> _readLastLines(File f, int maxLines) async {
     final size = await f.length();
-    if (size < 64 * 1024) {
-      final content = await f.readAsString();
-      final lines = content.split('\n');
-      if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast();
-      if (lines.length <= maxLines) return lines;
-      return lines.sublist(lines.length - maxLines);
-    }
-    final int readBytes = 64 * 1024;
-    final int start = (size - readBytes) > 0 ? (size - readBytes) : 0;
+    if (size == 0 || maxLines <= 0) return <String>[];
+    const int chunkSize = 64 * 1024;
     final raf = await f.open();
     try {
-      await raf.setPosition(start);
-      final data = await raf.read(readBytes);
-      final content = utf8.decode(data, allowMalformed: true);
-      final lines = content.split('\n');
-      if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast();
+      final chunks = <List<int>>[];
+      int start = size;
+      int newlines = 0;
+      while (start > 0 && newlines <= maxLines) {
+        final readStart = start > chunkSize ? start - chunkSize : 0;
+        await raf.setPosition(readStart);
+        final data = await raf.read(start - readStart);
+        chunks.insert(0, data);
+        for (final b in data) {
+          if (b == 0x0A) newlines++;
+        }
+        start = readStart;
+      }
+      final bytes = <int>[for (final c in chunks) ...c];
+      final lines = utf8.decode(bytes, allowMalformed: true).split('\n');
+      // Reading from mid-file: the first line is a partial record.
+      if (start > 0 && lines.isNotEmpty) lines.removeAt(0);
+      lines.removeWhere((l) => l.isEmpty);
       if (lines.length <= maxLines) return lines;
       return lines.sublist(lines.length - maxLines);
     } finally {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1
+
+**Fix: file store history and writes**
+
+- `FileLoggerStore.loadEntries` no longer throws once a log file exceeds 64KB (the tail read started mid-line); it now reads backwards in chunks until it has `limit` lines, and skips torn / undecodable lines.
+- Serialize timed flushes with appends: an append during an in-flight flush used to throw `StreamSink is bound to a stream` and wedge the write queue, so nothing was persisted afterwards.
+
 ## 0.6.0
 
 **Default file persistence; release still logs `info+`**
