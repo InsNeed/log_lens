@@ -8,7 +8,7 @@ macos/
 linux/
 web/
 
-# Companion Flutter package (publish_to: none; not part of loglens)
+# Companion Flutter package (published separately as loglens_flutter)
 packages/
 
 # Huge demos / junk
