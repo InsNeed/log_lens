@@ -196,10 +196,10 @@ packages:
     dependency: "direct main"
     description:
       name: loglens
-      sha256: "74acdbb270e60f4360ef9b0a86c0e71c46f6df00510215625bae910dc5347586"
+      sha256: e9107748b797da9dd5a48095b87a5b22aea2ffbd01e753fbf5ff764fc26b2672
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.0"
+    version: "0.6.1"
   matcher:
     dependency: transitive
     description:
