@@ -53,7 +53,27 @@ await LogLens.init(
 );
 ```
 
-Optional: `debugGuard: false` to allow debug in release; pass `skipCallerContains` if you wrap LogLens.
+Optional: `debugGuard: false` to allow debug in release. If you call LogLens through your own wrapper, see below.
+
+#### Wrapping LogLens (e.g. `AppLogger`)
+
+The file name on each entry is taken from the first stack frame outside `package:loglens` / `package:logger`. If every call goes through a wrapper such as `AppLogger.info(...)`, that first frame is always the wrapper, so every entry shows `app_logger.dart`.
+
+Tell LogLens to skip the wrapper once, at init:
+
+```dart
+await LogLens.init(
+  defaultModules: AppLogModule.values,
+  defaultLayers: AppLogLayer.values,
+  skipCallerContains: const ['core/logging/app_logger.dart'],
+);
+```
+
+Any stack frame containing one of these substrings is skipped, so entries show the real caller (`login_page.dart`, …). `LogLensFlutter.init` takes the same parameter.
+
+This can't be automatic: from the stack alone LogLens can't tell a wrapper from business code. Guessing by file name (e.g. anything with `logger`) would hide real callers, and skipping a fixed number of frames would break apps that call `LogLens` directly.
+
+> Don't pass `debugGuard: kDebugMode`. It evaluates to `false` in release, which turns the guard **off** and keeps debug logs in release builds. Leave `debugGuard` at its default (`true`).
 
 ### 2. Call
 

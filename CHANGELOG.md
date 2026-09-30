@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+
+- Docs: wrapper setup with `skipCallerContains` (why caller file names show the wrapper, and why it can't be automatic), and the `debugGuard: kDebugMode` pitfall.
+
 ## 0.6.1
 
 **Fix: file store history and writes**

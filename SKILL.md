@@ -30,7 +30,13 @@ LogLens.d/i/w/e(message, module, layer);
 // e may take error, stackTrace
 ```
 
-If the app wraps LogLens, set `skipCallerContains` at init so caller file names resolve past the wrapper.
+If the app wraps LogLens (e.g. `AppLogger`), set `skipCallerContains` once at init, otherwise every entry's file name is the wrapper's:
+
+```dart
+skipCallerContains: const ['core/logging/app_logger.dart'],
+```
+
+Do not pass `debugGuard: kDebugMode` — it is `false` in release and disables the guard. Keep the default.
 
 ## Module / layer naming
 
